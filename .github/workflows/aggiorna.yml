@@ -23,17 +23,19 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: node genera.js
 
-      - name: Carica su FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./public/
-          server-dir: ${{ secrets.FTP_REMOTE_DIR }}
-          protocol: ftps
-          port: 21
-          security: loose
-          exclude: |
-            **/.git*
-            **/.git*/**
+      - name: Installa lftp e carica su FTP
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
+        run: |
+          sudo apt-get install -y lftp
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_HOST" << EOF
+          set ftp:passive-mode true
+          set ftp:use-ipv6 false
+          set ssl:verify-certificate false
+          set net:timeout 30
+          mirror -R ./public/ $FTP_REMOTE_DIR
+          bye
+          EOF
