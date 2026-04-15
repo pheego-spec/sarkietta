@@ -8,28 +8,14 @@ async function genera() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
 
-  const prompt = `Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano per un gruppo di amici 40enni appassionati di calcio e fantacalcio.
+  const prompt = `Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano.
+Oggi è ${oggi}.
+Rispondi SOLO con JSON valido, zero markdown, zero backtick, zero testo extra.
+Ogni campo testo: MAX 20 parole.
 
-Oggi è ${oggi}. Genera i contenuti giornalieri in formato JSON puro, zero markdown, zero backtick.
+{"crotone":{"titolo":"max 12 parole","sottotitolo":"max 5 parole","testo":"max 20 parole"},"milan":{"titolo":"max 10 parole","testo":"max 20 parole","badge":"Crisi Nera"},"juve":{"titolo":"max 10 parole","testo":"max 20 parole","badge":"Fenomeno?"},"inter":{"titolo":"max 10 parole","testo":"max 20 parole","badge":"Bidone d'Oro"},"seriea_extra":{"titolo":"max 10 parole","testo":"max 20 parole","team":"squadra"},"seriea_extra2":{"titolo":"max 10 parole","testo":"max 20 parole","team":"squadra"},"fanta_flop":{"titolo":"max 10 parole","testo":"max 15 parole"},"fanta_top":{"titolo":"max 10 parole","testo":"max 15 parole"},"minori_tennis":{"titolo":"max 8 parole","testo":"max 15 parole"},"minori_f1":{"titolo":"max 8 parole","testo":"max 15 parole"},"minori_altro":{"categoria":"sport","titolo":"max 8 parole","testo":"max 15 parole"},"ticker":["max 6 parole","max 6 parole","max 6 parole","max 6 parole","max 6 parole"],"sondaggio_domanda":"max 8 parole","sondaggio_opzioni":["max 5 parole","max 5 parole","max 5 parole","max 5 parole"],"vincenti":[{"nome":"nome sportivo","testo":"max 15 parole"},{"nome":"nome sportivo","testo":"max 15 parole"}]}
 
-Rispondi SOLO con questo JSON, nient'altro:
-
-{"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"milan":{"titolo":"...","testo":"...","badge":"Crisi Nera"},"juve":{"titolo":"...","testo":"...","badge":"Fenomeno?"},"inter":{"titolo":"...","testo":"...","badge":"Bidone d'Oro"},"seriea_extra":{"titolo":"...","testo":"...","team":"..."},"seriea_extra2":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"..."},"fanta_top":{"titolo":"...","testo":"..."},"minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}
-
-Regole per i testi:
-- crotone.titolo: max 15 parole, epocale e assurdo
-- crotone.sottotitolo: max 6 parole tipo "Mercato Storico · Champions 2030"
-- crotone.testo: max 50 parole
-- milan/juve/inter titolo: max 12 parole, testo: max 40 parole
-- seriea_extra/extra2 titolo: max 12 parole, testo: max 40 parole
-- fanta_flop/top titolo: max 12 parole, testo: max 30 parole
-- minori titolo: max 10 parole, testo: max 25 parole
-- ticker: 5 frasi di max 8 parole ciascuna
-- sondaggio_domanda: max 10 parole
-- sondaggio_opzioni: 4 opzioni di max 6 parole ciascuna
-- vincenti testo: max 20 parole ironici
-
-Tono: sarcastico intelligente, mai volgare. Crotone sempre protagonista assurdo.`;
+Sostituisci ogni campo con testo ironico reale. Crotone sempre protagonista assurdo. Tono sarcastico.`;
 
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -39,7 +25,7 @@ Tono: sarcastico intelligente, mai volgare. Crotone sempre protagonista assurdo.
     },
     body: JSON.stringify({
       model: 'deepseek-chat',
-      max_tokens: 4096,
+      max_tokens: 8192,
       temperature: 1.0,
       messages: [{ role: 'user', content: prompt }]
     })
@@ -51,10 +37,16 @@ Tono: sarcastico intelligente, mai volgare. Crotone sempre protagonista assurdo.
   }
 
   const data = await response.json();
-  console.log('Tokens usati:', data.usage);
+  console.log('Finish reason:', data.choices[0].finish_reason);
+  console.log('Tokens usati:', JSON.stringify(data.usage));
 
   const raw = data.choices[0].message.content.trim();
-  console.log('Risposta raw (primi 200 char):', raw.substring(0, 200));
+  console.log('Lunghezza risposta:', raw.length, 'chars');
+  console.log('Primi 300 chars:', raw.substring(0, 300));
+
+  if (data.choices[0].finish_reason !== 'stop') {
+    throw new Error(`DeepSeek ha troncato la risposta. Finish reason: ${data.choices[0].finish_reason}. Tokens: ${JSON.stringify(data.usage)}`);
+  }
 
   const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
   const contenuti = JSON.parse(clean);
