@@ -9,13 +9,13 @@ async function genera() {
   });
 
   const prompt = `Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano.
-Oggi è ${oggi}.
-Rispondi SOLO con JSON valido, zero markdown, zero backtick, zero testo extra.
-Ogni campo testo: MAX 20 parole.
+Oggi e' ${oggi}.
+Rispondi SOLO con JSON valido su UNA SOLA RIGA, zero markdown, zero backtick, zero newline dentro le stringhe.
+Ogni valore testuale: massimo 20 parole, tutto su una riga senza a capo.
 
-{"crotone":{"titolo":"max 12 parole","sottotitolo":"max 5 parole","testo":"max 20 parole"},"milan":{"titolo":"max 10 parole","testo":"max 20 parole","badge":"Crisi Nera"},"juve":{"titolo":"max 10 parole","testo":"max 20 parole","badge":"Fenomeno?"},"inter":{"titolo":"max 10 parole","testo":"max 20 parole","badge":"Bidone d'Oro"},"seriea_extra":{"titolo":"max 10 parole","testo":"max 20 parole","team":"squadra"},"seriea_extra2":{"titolo":"max 10 parole","testo":"max 20 parole","team":"squadra"},"fanta_flop":{"titolo":"max 10 parole","testo":"max 15 parole"},"fanta_top":{"titolo":"max 10 parole","testo":"max 15 parole"},"minori_tennis":{"titolo":"max 8 parole","testo":"max 15 parole"},"minori_f1":{"titolo":"max 8 parole","testo":"max 15 parole"},"minori_altro":{"categoria":"sport","titolo":"max 8 parole","testo":"max 15 parole"},"ticker":["max 6 parole","max 6 parole","max 6 parole","max 6 parole","max 6 parole"],"sondaggio_domanda":"max 8 parole","sondaggio_opzioni":["max 5 parole","max 5 parole","max 5 parole","max 5 parole"],"vincenti":[{"nome":"nome sportivo","testo":"max 15 parole"},{"nome":"nome sportivo","testo":"max 15 parole"}]}
+{"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"milan":{"titolo":"...","testo":"...","badge":"Crisi Nera"},"juve":{"titolo":"...","testo":"...","badge":"Fenomeno?"},"inter":{"titolo":"...","testo":"...","badge":"Bidone d'Oro"},"seriea_extra":{"titolo":"...","testo":"...","team":"..."},"seriea_extra2":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"..."},"fanta_top":{"titolo":"...","testo":"..."},"minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}
 
-Sostituisci ogni campo con testo ironico reale. Crotone sempre protagonista assurdo. Tono sarcastico.`;
+Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assurdo. Tono sarcastico intelligente.`;
 
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -40,16 +40,27 @@ Sostituisci ogni campo con testo ironico reale. Crotone sempre protagonista assu
   console.log('Finish reason:', data.choices[0].finish_reason);
   console.log('Tokens usati:', JSON.stringify(data.usage));
 
-  const raw = data.choices[0].message.content.trim();
+  let raw = data.choices[0].message.content.trim();
   console.log('Lunghezza risposta:', raw.length, 'chars');
-  console.log('Primi 300 chars:', raw.substring(0, 300));
 
-  if (data.choices[0].finish_reason !== 'stop') {
-    throw new Error(`DeepSeek ha troncato la risposta. Finish reason: ${data.choices[0].finish_reason}. Tokens: ${JSON.stringify(data.usage)}`);
-  }
+  // Rimuove backtick markdown
+  raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
 
-  const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-  const contenuti = JSON.parse(clean);
+  // Estrae solo la parte JSON (da { a })
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('Nessun JSON trovato nella risposta');
+  raw = raw.substring(start, end + 1);
+
+  // Pulisce caratteri di controllo dentro le stringhe JSON
+  // Sostituisce newline/tab/carriage return dentro valori stringa
+  raw = raw.replace(/[\r\n\t]/g, ' ');
+  // Collassa spazi multipli
+  raw = raw.replace(/  +/g, ' ');
+
+  console.log('Primi 200 chars puliti:', raw.substring(0, 200));
+
+  const contenuti = JSON.parse(raw);
   contenuti.generato_il = new Date().toISOString();
 
   fs.writeFileSync(
