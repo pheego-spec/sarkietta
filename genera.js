@@ -5,15 +5,82 @@ const CONTENUTI_FILE = path.join(__dirname, 'public', 'contenuti.json');
 const SONDAGGIO_FILE = path.join(__dirname, 'public', 'sondaggio.json');
 const MAX_TENTATIVI = 3;
 
-async function chiamaDeepSeek(oggi) {
-  const prompt = `Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano.
+// Feed RSS da cui leggere notizie reali
+const RSS_FEEDS = [
+  'https://www.gazzetta.it/rss/calcio.xml',
+  'https://www.corrieredellosport.it/rss/calcio.xml',
+  'https://www.ansa.it/sport/notizie/calcio/calcio_rss.xml'
+];
+
+async function leggiRSS(url) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const xml = await res.text();
+
+    // Estrae titoli e descrizioni dal XML
+    const titoli = [];
+    const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi;
+    const titoloRegex = /<title[^>]*><!\[CDATA\[(.*?)\]\]><\/title>|<title[^>]*>(.*?)<\/title>/i;
+    const descRegex = /<description[^>]*><!\[CDATA\[(.*?)\]\]><\/description>|<description[^>]*>(.*?)<\/description>/i;
+
+    let match;
+    while ((match = itemRegex.exec(xml)) !== null && titoli.length < 8) {
+      const item = match[1];
+      const tMatch = titoloRegex.exec(item);
+      const dMatch = descRegex.exec(item);
+      if (tMatch) {
+        const titolo = (tMatch[1] || tMatch[2] || '').trim().replace(/<[^>]+>/g, '');
+        const desc = dMatch ? (dMatch[1] || dMatch[2] || '').trim().replace(/<[^>]+>/g, '').substring(0, 150) : '';
+        if (titolo && titolo.length > 5) titoli.push({ titolo, desc });
+      }
+    }
+    return titoli;
+  } catch (e) {
+    console.log(`RSS ${url} fallito: ${e.message}`);
+    return [];
+  }
+}
+
+async function leggiTuttiRSS() {
+  console.log('Lettura feed RSS...');
+  const risultati = await Promise.all(RSS_FEEDS.map(leggiRSS));
+  const tutti = risultati.flat();
+
+  // Deduplication per titoli simili
+  const unici = tutti.filter((item, idx, arr) =>
+    arr.findIndex(x => x.titolo.substring(0, 30) === item.titolo.substring(0, 30)) === idx
+  );
+
+  console.log(`Notizie reali trovate: ${unici.length}`);
+  return unici.slice(0, 20); // max 20 notizie
+}
+
+async function chiamaDeepSeek(oggi, notizie) {
+  const notizieTesto = notizie.length > 0
+    ? notizie.map((n, i) => `${i+1}. ${n.titolo}${n.desc ? ' — ' + n.desc : ''}`).join('\n')
+    : 'Nessuna notizia disponibile oggi.';
+
+  const prompt = `Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano per amici 40enni appassionati di calcio e fantacalcio.
 Oggi e' ${oggi}.
-Rispondi SOLO con JSON valido, zero markdown, zero backtick, zero newline dentro le stringhe.
-Ogni valore testuale: massimo 15 parole, tutto su una riga.
+
+NOTIZIE REALI DI OGGI (da Gazzetta, Corriere Sport, ANSA):
+${notizieTesto}
+
+Il tuo compito:
+- Usa le notizie reali come base per gli articoli su Milan, Juve, Inter e Serie A
+- Rielabora i fatti reali in chiave ironica e sarcastica — non inventare i fatti principali
+- Per Crotone, sport minori e sondaggio puoi inventare liberamente
+- Ogni testo max 20 parole, tutto su una riga senza a capo
+
+Rispondi SOLO con questo JSON valido, zero markdown, zero backtick:
 
 {"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"milan":{"titolo":"...","testo":"...","badge":"Crisi Nera"},"juve":{"titolo":"...","testo":"...","badge":"Fenomeno?"},"inter":{"titolo":"...","testo":"...","badge":"Bidone d'Oro"},"seriea_extra":{"titolo":"...","testo":"...","team":"..."},"seriea_extra2":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"..."},"fanta_top":{"titolo":"...","testo":"..."},"minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}
 
-Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assurdo. Tono sarcastico.`;
+Sostituisci ogni "..." con contenuto reale rielaborato o ironico. Crotone sempre protagonista assurdo.`;
 
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -24,7 +91,7 @@ Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assu
     body: JSON.stringify({
       model: 'deepseek-chat',
       max_tokens: 8192,
-      temperature: 1.0,
+      temperature: 0.8,
       messages: [{ role: 'user', content: prompt }]
     })
   });
@@ -39,18 +106,14 @@ Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assu
   console.log('Tokens:', JSON.stringify(data.usage));
 
   let raw = data.choices[0].message.content.trim();
-
-  // Rimuove backtick markdown
   raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
 
-  // Estrae da { fino all'ultimo }
   const start = raw.indexOf('{');
   if (start === -1) throw new Error('Nessun JSON trovato');
   raw = raw.substring(start);
   const lastBrace = raw.lastIndexOf('}');
   if (lastBrace > 0) raw = raw.substring(0, lastBrace + 1);
 
-  // Pulisce caratteri di controllo
   raw = raw.replace(/[\r\n\t]/g, ' ').replace(/  +/g, ' ').trim();
 
   // Ripara parentesi mancanti
@@ -70,7 +133,6 @@ Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assu
     console.log('Riparati', missing, 'chiusure }');
   }
 
-  // Parsing — lancia eccezione se non valido
   return JSON.parse(raw);
 }
 
@@ -82,56 +144,46 @@ async function genera() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
 
+  // Leggi notizie reali dai RSS
+  const notizie = await leggiTuttiRSS();
+
   let contenuti = null;
   let erroreFinale = null;
 
-  // 3 tentativi con pausa crescente
   for (let tentativo = 1; tentativo <= MAX_TENTATIVI; tentativo++) {
     console.log(`\nTentativo ${tentativo}/${MAX_TENTATIVI}...`);
     try {
-      contenuti = await chiamaDeepSeek(oggi);
+      contenuti = await chiamaDeepSeek(oggi, notizie);
       console.log(`Tentativo ${tentativo} riuscito!`);
       break;
     } catch (err) {
       erroreFinale = err;
       console.log(`Tentativo ${tentativo} fallito: ${err.message}`);
       if (tentativo < MAX_TENTATIVI) {
-        const pausa = tentativo * 10000; // 10s, 20s
-        console.log(`Attendo ${pausa/1000}s prima del prossimo tentativo...`);
+        const pausa = tentativo * 10000;
+        console.log(`Attendo ${pausa/1000}s...`);
         await new Promise(r => setTimeout(r, pausa));
       }
     }
   }
 
-  // Se tutti i tentativi falliscono, usa i contenuti del giorno prima
+  // Fallback sui contenuti del giorno prima
   if (!contenuti) {
-    console.log('\nTutti i tentativi falliti. Uso contenuti del giorno prima come fallback.');
+    console.log('\nTutti i tentativi falliti. Uso contenuti del giorno prima.');
     if (fs.existsSync(CONTENUTI_FILE)) {
       const vecchi = JSON.parse(fs.readFileSync(CONTENUTI_FILE, 'utf8'));
-      // Aggiorna solo la data e aggiunge nota fallback
       vecchi.generato_il = new Date().toISOString();
       vecchi.fallback = true;
-      vecchi.errore = erroreFinale.message;
-      // Modifica il ticker per segnalare il fallback
-      if (vecchi.ticker) {
-        vecchi.ticker[0] = 'Redazione in pausa tecnica, torniamo domani';
-      }
+      if (vecchi.ticker) vecchi.ticker[0] = 'Redazione in pausa tecnica, torniamo domani';
       contenuti = vecchi;
-      console.log('Fallback: uso contenuti precedenti con data aggiornata.');
     } else {
-      // Nessun contenuto precedente — crea contenuto minimo di emergenza
-      console.log('Nessun contenuto precedente. Creo contenuto di emergenza.');
       contenuti = {
         generato_il: new Date().toISOString(),
         fallback: true,
-        crotone: {
-          titolo: 'Crotone: la redazione e in pausa tecnica, ma il sogno Champions continua',
-          sottotitolo: 'Pausa Tecnica',
-          testo: 'I nostri giornalisti stanno ricaricando le energie. Torniamo domani con notizie ancora piu assurde.'
-        },
+        crotone: { titolo: 'Crotone: la redazione e in pausa tecnica', sottotitolo: 'Pausa Tecnica', testo: 'Torniamo domani con notizie ancora piu assurde.' },
         milan: { titolo: 'Milan: notizie in aggiornamento', testo: 'Contenuti in arrivo domani.', badge: 'Crisi Nera' },
         juve: { titolo: 'Juve: notizie in aggiornamento', testo: 'Contenuti in arrivo domani.', badge: 'Fenomeno?' },
-        inter: { titolo: 'Inter: notizie in aggiornamento', testo: 'Contenuti in arrivo domani.', badge: 'Bidone d\'Oro' },
+        inter: { titolo: 'Inter: notizie in aggiornamento', testo: 'Contenuti in arrivo domani.', badge: "Bidone d'Oro" },
         seriea_extra: { titolo: 'Serie A: aggiornamento in corso', testo: 'Torniamo domani.', team: 'Serie A' },
         seriea_extra2: { titolo: 'Serie A: aggiornamento in corso', testo: 'Torniamo domani.', team: 'Serie A' },
         fanta_flop: { titolo: 'Fantacalcio: dati in aggiornamento', testo: 'Torniamo domani.' },
@@ -139,21 +191,19 @@ async function genera() {
         minori_tennis: { titolo: 'Tennis: aggiornamento in corso', testo: 'Torniamo domani.' },
         minori_f1: { titolo: 'F1: aggiornamento in corso', testo: 'Torniamo domani.' },
         minori_altro: { categoria: 'Sport', titolo: 'Sport: aggiornamento in corso', testo: 'Torniamo domani.' },
-        ticker: ['Redazione in pausa tecnica', 'Torniamo domani', 'Il Crotone intanto si allena', 'Campionato sempre piu vicino', 'Restate sintonizzati'],
+        ticker: ['Redazione in pausa tecnica', 'Torniamo domani', 'Il Crotone intanto si allena', 'Restate sintonizzati', 'Notizie fresche domani mattina'],
         sondaggio_domanda: 'Cosa fai quando il sito non si aggiorna?',
         sondaggio_opzioni: ['Aspetto paziente', 'Mi arrabbio', 'Guardo la TV', 'Vado al bar'],
         vincenti: [
-          { nome: 'La Redazione', testo: 'Torna domani con contenuti freschi e assurdi come sempre.' },
-          { nome: 'Il Crotone', testo: 'Sempre nel nostro cuore, qualunque serie stia giocando.' }
+          { nome: 'La Redazione', testo: 'Torna domani con contenuti freschi.' },
+          { nome: 'Il Crotone', testo: 'Sempre nel nostro cuore, qualunque serie.' }
         ]
       };
     }
   }
 
-  // Salva contenuti
   fs.writeFileSync(CONTENUTI_FILE, JSON.stringify(contenuti, null, 2), 'utf8');
 
-  // Salva sondaggio (solo se non fallback o se non esiste)
   if (!contenuti.fallback || !fs.existsSync(SONDAGGIO_FILE)) {
     const sondaggio = {
       domanda: contenuti.sondaggio_domanda,
@@ -165,15 +215,14 @@ async function genera() {
   }
 
   if (contenuti.fallback) {
-    console.log('\nATTENZIONE: usato contenuto di fallback. Errore:', erroreFinale?.message);
-    // Esce con codice 0 comunque — il sito rimane funzionante
+    console.log('\nATTENZIONE: usato fallback. Errore:', erroreFinale?.message);
   } else {
-    console.log('\nContenuti generati e salvati con successo:', contenuti.generato_il);
+    console.log('\nContenuti salvati con successo:', contenuti.generato_il);
+    console.log('Notizie reali usate:', notizie.length);
   }
 }
 
 genera().catch(err => {
   console.error('ERRORE CRITICO:', err.message);
-  // Esce con 0 per non bloccare il workflow — il fallback e' gia stato gestito
   process.exit(0);
 });
