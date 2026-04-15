@@ -10,12 +10,12 @@ async function genera() {
 
   const prompt = `Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano.
 Oggi e' ${oggi}.
-Rispondi SOLO con JSON valido su UNA SOLA RIGA, zero markdown, zero backtick, zero newline dentro le stringhe.
-Ogni valore testuale: massimo 20 parole, tutto su una riga senza a capo.
+Rispondi SOLO con JSON valido, zero markdown, zero backtick, zero newline dentro le stringhe.
+Ogni valore testuale: massimo 15 parole, tutto su una riga.
 
 {"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"milan":{"titolo":"...","testo":"...","badge":"Crisi Nera"},"juve":{"titolo":"...","testo":"...","badge":"Fenomeno?"},"inter":{"titolo":"...","testo":"...","badge":"Bidone d'Oro"},"seriea_extra":{"titolo":"...","testo":"...","team":"..."},"seriea_extra2":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"..."},"fanta_top":{"titolo":"...","testo":"..."},"minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}
 
-Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assurdo. Tono sarcastico intelligente.`;
+Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assurdo. Tono sarcastico.`;
 
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -46,19 +46,40 @@ Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assu
   // Rimuove backtick markdown
   raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
 
-  // Estrae solo la parte JSON (da { a })
+  // Estrae solo da { a ultimo }
   const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('Nessun JSON trovato nella risposta');
-  raw = raw.substring(start, end + 1);
+  if (start === -1) throw new Error('Nessun JSON trovato nella risposta');
+  raw = raw.substring(start);
 
-  // Pulisce caratteri di controllo dentro le stringhe JSON
-  // Sostituisce newline/tab/carriage return dentro valori stringa
-  raw = raw.replace(/[\r\n\t]/g, ' ');
-  // Collassa spazi multipli
-  raw = raw.replace(/  +/g, ' ');
+  // Pulisce caratteri di controllo
+  raw = raw.replace(/[\r\n\t]/g, ' ').replace(/  +/g, ' ').trim();
 
-  console.log('Primi 200 chars puliti:', raw.substring(0, 200));
+  // Se il JSON e' troncato, prova a chiuderlo
+  if (!raw.endsWith('}')) {
+    console.log('JSON troncato, tento riparazione...');
+    // Trova l'ultimo } valido e chiudi li
+    const lastBrace = raw.lastIndexOf('}');
+    if (lastBrace > 0) {
+      raw = raw.substring(0, lastBrace + 1);
+      // Conta { e } aperti/chiusi e aggiungi quelli mancanti
+      let open = 0, close = 0;
+      let inStr = false, escape = false;
+      for (const c of raw) {
+        if (escape) { escape = false; continue; }
+        if (c === '\\') { escape = true; continue; }
+        if (c === '"') { inStr = !inStr; continue; }
+        if (!inStr) {
+          if (c === '{') open++;
+          if (c === '}') close++;
+        }
+      }
+      const missing = open - close;
+      if (missing > 0) raw += '}'.repeat(missing);
+      console.log('Riparazione: aggiunti', missing, 'chiusure }');
+    }
+  }
+
+  console.log('Ultimi 100 chars:', raw.substring(raw.length - 100));
 
   const contenuti = JSON.parse(raw);
   contenuti.generato_il = new Date().toISOString();
