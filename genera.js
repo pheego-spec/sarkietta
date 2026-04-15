@@ -1,13 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
-async function genera() {
-  console.log('Generazione contenuti con DeepSeek:', new Date().toISOString());
+const CONTENUTI_FILE = path.join(__dirname, 'public', 'contenuti.json');
+const SONDAGGIO_FILE = path.join(__dirname, 'public', 'sondaggio.json');
+const MAX_TENTATIVI = 3;
 
-  const oggi = new Date().toLocaleDateString('it-IT', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-  });
-
+async function chiamaDeepSeek(oggi) {
   const prompt = `Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano.
 Oggi e' ${oggi}.
 Rispondi SOLO con JSON valido, zero markdown, zero backtick, zero newline dentro le stringhe.
@@ -38,27 +36,24 @@ Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assu
 
   const data = await response.json();
   console.log('Finish reason:', data.choices[0].finish_reason);
-  console.log('Tokens usati:', JSON.stringify(data.usage));
+  console.log('Tokens:', JSON.stringify(data.usage));
 
   let raw = data.choices[0].message.content.trim();
-  console.log('Lunghezza risposta:', raw.length, 'chars');
 
   // Rimuove backtick markdown
   raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
 
-  // Estrae solo da { fino all'ultimo }
+  // Estrae da { fino all'ultimo }
   const start = raw.indexOf('{');
-  if (start === -1) throw new Error('Nessun JSON trovato nella risposta');
+  if (start === -1) throw new Error('Nessun JSON trovato');
   raw = raw.substring(start);
-
-  // Taglia tutto dopo l'ultimo } — rimuove testo extra che DeepSeek aggiunge dopo il JSON
   const lastBrace = raw.lastIndexOf('}');
   if (lastBrace > 0) raw = raw.substring(0, lastBrace + 1);
 
   // Pulisce caratteri di controllo
   raw = raw.replace(/[\r\n\t]/g, ' ').replace(/  +/g, ' ').trim();
 
-  // Se mancano parentesi chiuse, le aggiunge
+  // Ripara parentesi mancanti
   let open = 0, close = 0, inStr = false, escape = false;
   for (const c of raw) {
     if (escape) { escape = false; continue; }
@@ -72,36 +67,113 @@ Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assu
   const missing = open - close;
   if (missing > 0) {
     raw += '}'.repeat(missing);
-    console.log('Riparazione: aggiunti', missing, 'chiusure }');
+    console.log('Riparati', missing, 'chiusure }');
   }
 
-  console.log('Ultimi 50 chars:', raw.substring(raw.length - 50));
+  // Parsing — lancia eccezione se non valido
+  return JSON.parse(raw);
+}
 
-  const contenuti = JSON.parse(raw);
-  contenuti.generato_il = new Date().toISOString();
+async function genera() {
+  console.log('=== Sarkietta generazione contenuti ===');
+  console.log('Data:', new Date().toISOString());
 
-  fs.writeFileSync(
-    path.join(__dirname, 'public', 'contenuti.json'),
-    JSON.stringify(contenuti, null, 2),
-    'utf8'
-  );
+  const oggi = new Date().toLocaleDateString('it-IT', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
 
-  const sondaggio = {
-    domanda: contenuti.sondaggio_domanda,
-    opzioni: contenuti.sondaggio_opzioni,
-    voti: [0, 0, 0, 0],
-    data: new Date().toDateString()
-  };
-  fs.writeFileSync(
-    path.join(__dirname, 'public', 'sondaggio.json'),
-    JSON.stringify(sondaggio, null, 2),
-    'utf8'
-  );
+  let contenuti = null;
+  let erroreFinale = null;
 
-  console.log('Contenuti salvati con successo:', contenuti.generato_il);
+  // 3 tentativi con pausa crescente
+  for (let tentativo = 1; tentativo <= MAX_TENTATIVI; tentativo++) {
+    console.log(`\nTentativo ${tentativo}/${MAX_TENTATIVI}...`);
+    try {
+      contenuti = await chiamaDeepSeek(oggi);
+      console.log(`Tentativo ${tentativo} riuscito!`);
+      break;
+    } catch (err) {
+      erroreFinale = err;
+      console.log(`Tentativo ${tentativo} fallito: ${err.message}`);
+      if (tentativo < MAX_TENTATIVI) {
+        const pausa = tentativo * 10000; // 10s, 20s
+        console.log(`Attendo ${pausa/1000}s prima del prossimo tentativo...`);
+        await new Promise(r => setTimeout(r, pausa));
+      }
+    }
+  }
+
+  // Se tutti i tentativi falliscono, usa i contenuti del giorno prima
+  if (!contenuti) {
+    console.log('\nTutti i tentativi falliti. Uso contenuti del giorno prima come fallback.');
+    if (fs.existsSync(CONTENUTI_FILE)) {
+      const vecchi = JSON.parse(fs.readFileSync(CONTENUTI_FILE, 'utf8'));
+      // Aggiorna solo la data e aggiunge nota fallback
+      vecchi.generato_il = new Date().toISOString();
+      vecchi.fallback = true;
+      vecchi.errore = erroreFinale.message;
+      // Modifica il ticker per segnalare il fallback
+      if (vecchi.ticker) {
+        vecchi.ticker[0] = 'Redazione in pausa tecnica, torniamo domani';
+      }
+      contenuti = vecchi;
+      console.log('Fallback: uso contenuti precedenti con data aggiornata.');
+    } else {
+      // Nessun contenuto precedente — crea contenuto minimo di emergenza
+      console.log('Nessun contenuto precedente. Creo contenuto di emergenza.');
+      contenuti = {
+        generato_il: new Date().toISOString(),
+        fallback: true,
+        crotone: {
+          titolo: 'Crotone: la redazione e in pausa tecnica, ma il sogno Champions continua',
+          sottotitolo: 'Pausa Tecnica',
+          testo: 'I nostri giornalisti stanno ricaricando le energie. Torniamo domani con notizie ancora piu assurde.'
+        },
+        milan: { titolo: 'Milan: notizie in aggiornamento', testo: 'Contenuti in arrivo domani.', badge: 'Crisi Nera' },
+        juve: { titolo: 'Juve: notizie in aggiornamento', testo: 'Contenuti in arrivo domani.', badge: 'Fenomeno?' },
+        inter: { titolo: 'Inter: notizie in aggiornamento', testo: 'Contenuti in arrivo domani.', badge: 'Bidone d\'Oro' },
+        seriea_extra: { titolo: 'Serie A: aggiornamento in corso', testo: 'Torniamo domani.', team: 'Serie A' },
+        seriea_extra2: { titolo: 'Serie A: aggiornamento in corso', testo: 'Torniamo domani.', team: 'Serie A' },
+        fanta_flop: { titolo: 'Fantacalcio: dati in aggiornamento', testo: 'Torniamo domani.' },
+        fanta_top: { titolo: 'Fantacalcio: dati in aggiornamento', testo: 'Torniamo domani.' },
+        minori_tennis: { titolo: 'Tennis: aggiornamento in corso', testo: 'Torniamo domani.' },
+        minori_f1: { titolo: 'F1: aggiornamento in corso', testo: 'Torniamo domani.' },
+        minori_altro: { categoria: 'Sport', titolo: 'Sport: aggiornamento in corso', testo: 'Torniamo domani.' },
+        ticker: ['Redazione in pausa tecnica', 'Torniamo domani', 'Il Crotone intanto si allena', 'Campionato sempre piu vicino', 'Restate sintonizzati'],
+        sondaggio_domanda: 'Cosa fai quando il sito non si aggiorna?',
+        sondaggio_opzioni: ['Aspetto paziente', 'Mi arrabbio', 'Guardo la TV', 'Vado al bar'],
+        vincenti: [
+          { nome: 'La Redazione', testo: 'Torna domani con contenuti freschi e assurdi come sempre.' },
+          { nome: 'Il Crotone', testo: 'Sempre nel nostro cuore, qualunque serie stia giocando.' }
+        ]
+      };
+    }
+  }
+
+  // Salva contenuti
+  fs.writeFileSync(CONTENUTI_FILE, JSON.stringify(contenuti, null, 2), 'utf8');
+
+  // Salva sondaggio (solo se non fallback o se non esiste)
+  if (!contenuti.fallback || !fs.existsSync(SONDAGGIO_FILE)) {
+    const sondaggio = {
+      domanda: contenuti.sondaggio_domanda,
+      opzioni: contenuti.sondaggio_opzioni,
+      voti: [0, 0, 0, 0],
+      data: new Date().toDateString()
+    };
+    fs.writeFileSync(SONDAGGIO_FILE, JSON.stringify(sondaggio, null, 2), 'utf8');
+  }
+
+  if (contenuti.fallback) {
+    console.log('\nATTENZIONE: usato contenuto di fallback. Errore:', erroreFinale?.message);
+    // Esce con codice 0 comunque — il sito rimane funzionante
+  } else {
+    console.log('\nContenuti generati e salvati con successo:', contenuti.generato_il);
+  }
 }
 
 genera().catch(err => {
-  console.error('ERRORE:', err.message);
-  process.exit(1);
+  console.error('ERRORE CRITICO:', err.message);
+  // Esce con 0 per non bloccare il workflow — il fallback e' gia stato gestito
+  process.exit(0);
 });
