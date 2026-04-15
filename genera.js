@@ -226,3 +226,5 @@ genera().catch(err => {
   console.error('ERRORE CRITICO:', err.message);
   process.exit(0);
 });
+
+
