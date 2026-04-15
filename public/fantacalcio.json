@@ -1,11 +1,39 @@
 {
-  "giornata": "Giornata 28",
+  "giornata": "Giornata 30",
+  "aggiornato_il": "2026-04-15",
+  "narrativa": {
+    "titolo": "La Sarkiasuperlega si avvicina al capolinea: 5 giornate alla resa dei conti",
+    "paragrafi": [
+      "Bro&Brothers comanda con 51 punti e sembra irraggiungibile. Eppure lo dicevano anche alla giornata 15, quando era già in testa. Il problema è che FC Kremoton, secondo a 45 punti, non molla mai — come un parente a cena di Natale.",
+      "Il vero dramma stagionale ha un nome: Score Edge FC. Partita con ambizioni da podio, ha collezionato una serie di prestazioni da cardiologo: alla giornata 16 ha fatto 84.5 punti segnando 4 gol, poi alla giornata 28 è crollata a 56. Il tutto con la coerenza di una bussola rotta.",
+      "Dura Lex e Infadawork do Brasil sono incollati al settimo e ottavo posto con 36 punti ciascuno. La lotta per non finire ultimi è la vera Champions League di questa stagione — con più pathos e meno soldi.",
+      "Menzione d'onore a drunk boys: terzi in classifica con il nome più onesto della lega. Almeno loro sanno chi sono.",
+      "Perder Brema FC, nonostante il nome programmatico, è riuscita ad arrivare sesta. Forse il nome porta fortuna al contrario. O forse no."
+    ],
+    "record": [
+      { "label": "Punteggio più alto", "valore": "Infadawork do Brasil", "dettaglio": "92 punti alla GJ.18 — poi mai più rivisti" },
+      { "label": "Peggior crollo", "valore": "Score Edge FC", "dettaglio": "Da 84.5 a 56 punti in due giornate" },
+      { "label": "Più costante", "valore": "Bro&Brothers", "dettaglio": "In testa dalla GJ.1, quasi mai sotto i 70 pt" },
+      { "label": "Pareggi record", "valore": "FC Schalke 104", "dettaglio": "12 pareggi su 30 partite — l'arte del non decidere" }
+    ]
+  },
   "squadre": [
-    { "manager": "Marco",   "squadra": "Galactic FC",           "punti": 54 },
-    { "manager": "Luca",    "squadra": "Il Fenomeno",            "punti": 51 },
-    { "manager": "Gianni",  "squadra": "Trequartisti Ubriachi",  "punti": 48 },
-    { "manager": "Paolo",   "squadra": "Spezia Superstar",       "punti": 44 },
-    { "manager": "Andrea",  "squadra": "Portieri Scarsi",        "punti": 40 },
-    { "manager": "Stefano", "squadra": "F.C. Boh",               "punti": 35 }
-  ]
+    { "pos": 1, "squadra": "Bro&Brothers",        "g": 30, "v": 15, "n": 6,  "p": 9,  "gf": 58, "gs": 47, "dr": 11,  "punti": 51, "pt_totali": 2235.5 },
+    { "pos": 2, "squadra": "FC Kremoton",          "g": 30, "v": 12, "n": 9,  "p": 9,  "gf": 57, "gs": 48, "dr": 9,   "punti": 45, "pt_totali": 2223.0 },
+    { "pos": 3, "squadra": "drunk boys",           "g": 30, "v": 11, "n": 8,  "p": 11, "gf": 54, "gs": 52, "dr": 2,   "punti": 41, "pt_totali": 2203.0 },
+    { "pos": 4, "squadra": "Score Edge FC",        "g": 30, "v": 11, "n": 7,  "p": 12, "gf": 44, "gs": 52, "dr": -8,  "punti": 40, "pt_totali": 2129.0 },
+    { "pos": 5, "squadra": "FC Schalke 104",       "g": 30, "v": 9,  "n": 12, "p": 9,  "gf": 46, "gs": 45, "dr": 1,   "punti": 39, "pt_totali": 2158.5 },
+    { "pos": 6, "squadra": "Perder Brema FC",      "g": 30, "v": 10, "n": 9,  "p": 11, "gf": 44, "gs": 47, "dr": -3,  "punti": 39, "pt_totali": 2147.5 },
+    { "pos": 7, "squadra": "Dura Lex",             "g": 30, "v": 9,  "n": 9,  "p": 12, "gf": 42, "gs": 48, "dr": -6,  "punti": 36, "pt_totali": 2131.0 },
+    { "pos": 8, "squadra": "Infadawork do Brasil", "g": 30, "v": 10, "n": 6,  "p": 14, "gf": 41, "gs": 47, "dr": -6,  "punti": 36, "pt_totali": 2119.5 }
+  ],
+  "ultima_giornata": {
+    "numero": 30,
+    "risultati": [
+      { "casa": "Dura Lex",             "gol_casa": 2, "gol_fuori": 1, "fuori": "FC Kremoton",          "pt_casa": 77.5, "pt_fuori": 69.5 },
+      { "casa": "FC Schalke 104",       "gol_casa": 1, "gol_fuori": 3, "fuori": "Bro&Brothers",        "pt_casa": 68.5, "pt_fuori": 82.0 },
+      { "casa": "Score Edge FC",        "gol_casa": 0, "gol_fuori": 2, "fuori": "Perder Brema FC",     "pt_casa": 56.0, "pt_fuori": 75.5 },
+      { "casa": "Infadawork do Brasil", "gol_casa": 1, "gol_fuori": 2, "fuori": "drunk boys",          "pt_casa": 66.5, "pt_fuori": 77.0 }
+    ]
+  }
 }
