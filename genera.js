@@ -46,40 +46,36 @@ Sostituisci ogni "..." con testo ironico reale. Crotone sempre protagonista assu
   // Rimuove backtick markdown
   raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
 
-  // Estrae solo da { a ultimo }
+  // Estrae solo da { fino all'ultimo }
   const start = raw.indexOf('{');
   if (start === -1) throw new Error('Nessun JSON trovato nella risposta');
   raw = raw.substring(start);
 
+  // Taglia tutto dopo l'ultimo } — rimuove testo extra che DeepSeek aggiunge dopo il JSON
+  const lastBrace = raw.lastIndexOf('}');
+  if (lastBrace > 0) raw = raw.substring(0, lastBrace + 1);
+
   // Pulisce caratteri di controllo
   raw = raw.replace(/[\r\n\t]/g, ' ').replace(/  +/g, ' ').trim();
 
-  // Se il JSON e' troncato, prova a chiuderlo
-  if (!raw.endsWith('}')) {
-    console.log('JSON troncato, tento riparazione...');
-    // Trova l'ultimo } valido e chiudi li
-    const lastBrace = raw.lastIndexOf('}');
-    if (lastBrace > 0) {
-      raw = raw.substring(0, lastBrace + 1);
-      // Conta { e } aperti/chiusi e aggiungi quelli mancanti
-      let open = 0, close = 0;
-      let inStr = false, escape = false;
-      for (const c of raw) {
-        if (escape) { escape = false; continue; }
-        if (c === '\\') { escape = true; continue; }
-        if (c === '"') { inStr = !inStr; continue; }
-        if (!inStr) {
-          if (c === '{') open++;
-          if (c === '}') close++;
-        }
-      }
-      const missing = open - close;
-      if (missing > 0) raw += '}'.repeat(missing);
-      console.log('Riparazione: aggiunti', missing, 'chiusure }');
+  // Se mancano parentesi chiuse, le aggiunge
+  let open = 0, close = 0, inStr = false, escape = false;
+  for (const c of raw) {
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (!inStr) {
+      if (c === '{') open++;
+      if (c === '}') close++;
     }
   }
+  const missing = open - close;
+  if (missing > 0) {
+    raw += '}'.repeat(missing);
+    console.log('Riparazione: aggiunti', missing, 'chiusure }');
+  }
 
-  console.log('Ultimi 100 chars:', raw.substring(raw.length - 100));
+  console.log('Ultimi 50 chars:', raw.substring(raw.length - 50));
 
   const contenuti = JSON.parse(raw);
   contenuti.generato_il = new Date().toISOString();
