@@ -18,6 +18,26 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installa openpyxl
+        run: pip install openpyxl
+
+      - name: Leggi Excel e genera fantacalcio.json
+        run: |
+          # Cerca i file Excel nella cartella fanta/
+          CLASSIFICA=$(ls fanta/Classifica_*.xlsx 2>/dev/null | head -1)
+          CALENDARIO=$(ls fanta/Calendario_*.xlsx 2>/dev/null | head -1)
+          if [ -n "$CLASSIFICA" ] && [ -n "$CALENDARIO" ]; then
+            echo "Trovati: $CLASSIFICA e $CALENDARIO"
+            python3 leggi_excel.py "$CLASSIFICA" "$CALENDARIO" public/fantacalcio.json
+          else
+            echo "File Excel non trovati in fanta/ — uso fantacalcio.json esistente"
+          fi
+
       - name: Genera contenuti AI con DeepSeek
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
