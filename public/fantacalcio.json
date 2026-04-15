@@ -1,0 +1,11 @@
+{
+  "giornata": "Giornata 28",
+  "squadre": [
+    { "manager": "Marco",   "squadra": "Galactic FC",           "punti": 54 },
+    { "manager": "Luca",    "squadra": "Il Fenomeno",            "punti": 51 },
+    { "manager": "Gianni",  "squadra": "Trequartisti Ubriachi",  "punti": 48 },
+    { "manager": "Paolo",   "squadra": "Spezia Superstar",       "punti": 44 },
+    { "manager": "Andrea",  "squadra": "Portieri Scarsi",        "punti": 40 },
+    { "manager": "Stefano", "squadra": "F.C. Boh",               "punti": 35 }
+  ]
+}
