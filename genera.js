@@ -12,39 +12,24 @@ async function genera() {
 
 Oggi è ${oggi}. Genera i contenuti giornalieri in formato JSON puro, zero markdown, zero backtick.
 
-{
-  "crotone": {
-    "titolo": "titolo epocale e assurdo su Crotone Calcio",
-    "sottotitolo": "kicker tipo 'Mercato Storico · Progetto Champions'",
-    "testo": "articolo max 90 parole"
-  },
-  "milan":  { "titolo": "...", "testo": "max 70 parole", "badge": "Crisi Nera" },
-  "juve":   { "titolo": "...", "testo": "max 70 parole", "badge": "Fenomeno?" },
-  "inter":  { "titolo": "...", "testo": "max 70 parole", "badge": "Bidone d'Oro" },
-  "seriea_extra":  { "titolo": "...", "testo": "max 70 parole", "team": "nome squadra" },
-  "seriea_extra2": { "titolo": "...", "testo": "max 70 parole", "team": "nome squadra" },
-  "fanta_flop": { "titolo": "giocatore flop con voto basso", "testo": "max 60 parole" },
-  "fanta_top":  { "titolo": "top scorer ironico della giornata", "testo": "max 60 parole" },
-  "minori_tennis": { "titolo": "tennis visto da tifoso calcio", "testo": "max 50 parole" },
-  "minori_f1":     { "titolo": "F1 visto da tifoso calcio", "testo": "max 50 parole" },
-  "minori_altro":  { "categoria": "sport", "titolo": "...", "testo": "max 50 parole" },
-  "ticker": ["breaking 1","breaking 2","breaking 3","breaking 4","breaking 5"],
-  "sondaggio_domanda": "domanda ironica sul calcio italiano",
-  "sondaggio_opzioni": ["opzione A","opzione B","opzione C","opzione D"],
-  "vincenti": [
-    { "nome": "sportivo italiano vincente", "testo": "max 30 parole ironici" },
-    { "nome": "altro sportivo italiano",    "testo": "max 30 parole ironici" }
-  ]
-}
+Rispondi SOLO con questo JSON, nient'altro:
 
-Regole:
-- Crotone SEMPRE protagonista di notizie assurde ed epocali
-- Tono sarcastico intelligente, mai volgare
-- Titoli stile Gazzetta: seri all'inizio, assurdi alla fine
-- Running joke: Crotone tratta campioni impossibili, VAR incomprensibile, procuratori in giacca a vento
-- Varia ogni giorno, non ripetere le stesse battute
+{"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"milan":{"titolo":"...","testo":"...","badge":"Crisi Nera"},"juve":{"titolo":"...","testo":"...","badge":"Fenomeno?"},"inter":{"titolo":"...","testo":"...","badge":"Bidone d'Oro"},"seriea_extra":{"titolo":"...","testo":"...","team":"..."},"seriea_extra2":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"..."},"fanta_top":{"titolo":"...","testo":"..."},"minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}
 
-Rispondi SOLO con il JSON valido.`;
+Regole per i testi:
+- crotone.titolo: max 15 parole, epocale e assurdo
+- crotone.sottotitolo: max 6 parole tipo "Mercato Storico · Champions 2030"
+- crotone.testo: max 50 parole
+- milan/juve/inter titolo: max 12 parole, testo: max 40 parole
+- seriea_extra/extra2 titolo: max 12 parole, testo: max 40 parole
+- fanta_flop/top titolo: max 12 parole, testo: max 30 parole
+- minori titolo: max 10 parole, testo: max 25 parole
+- ticker: 5 frasi di max 8 parole ciascuna
+- sondaggio_domanda: max 10 parole
+- sondaggio_opzioni: 4 opzioni di max 6 parole ciascuna
+- vincenti testo: max 20 parole ironici
+
+Tono: sarcastico intelligente, mai volgare. Crotone sempre protagonista assurdo.`;
 
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -54,7 +39,7 @@ Rispondi SOLO con il JSON valido.`;
     },
     body: JSON.stringify({
       model: 'deepseek-chat',
-      max_tokens: 2000,
+      max_tokens: 4096,
       temperature: 1.0,
       messages: [{ role: 'user', content: prompt }]
     })
@@ -66,7 +51,11 @@ Rispondi SOLO con il JSON valido.`;
   }
 
   const data = await response.json();
+  console.log('Tokens usati:', data.usage);
+
   const raw = data.choices[0].message.content.trim();
+  console.log('Risposta raw (primi 200 char):', raw.substring(0, 200));
+
   const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
   const contenuti = JSON.parse(clean);
   contenuti.generato_il = new Date().toISOString();
@@ -89,7 +78,7 @@ Rispondi SOLO con il JSON valido.`;
     'utf8'
   );
 
-  console.log('Contenuti salvati. Generato il:', contenuti.generato_il);
+  console.log('Contenuti salvati con successo:', contenuti.generato_il);
 }
 
 genera().catch(err => {
