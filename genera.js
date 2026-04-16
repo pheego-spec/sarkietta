@@ -217,14 +217,14 @@ Zero apostrofi. Zero virgolette nei valori.`;
       const nraw = await callDeepSeek(np, `Satirico. ID:${nts}. Zero apostrofi.`);
       console.log('Narrativa raw:', nraw.substring(0, 150));
       const nj = JSON.parse(pulisciRaw(nraw));
-      fanta.narrativa = { titolo: nj.titolo, paragrafi: [nj.p1, nj.p2, nj.p3], record: [] };
+      contenuti.fanta_narrativa = { titolo: nj.titolo, paragrafi: [nj.p1, nj.p2, nj.p3], record: [] };
       console.log('Narrativa OK:', nj.titolo);
     } catch(err) {
       console.log('Narrativa fallita:', err.message);
       if (fs.existsSync(CONTENUTI_FILE)) {
         const prev = JSON.parse(fs.readFileSync(CONTENUTI_FILE, 'utf8'));
-        if (prev.fanta_data && prev.fanta_data.narrativa) {
-          fanta.narrativa = prev.fanta_data.narrativa;
+        if (prev.fanta_narrativa) {
+          contenuti.fanta_narrativa = prev.fanta_narrativa;
           console.log('Uso narrativa precedente');
         }
       }
