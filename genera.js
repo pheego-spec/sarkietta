@@ -115,17 +115,35 @@ async function genera() {
 
   // Cerca notizie reali via NewsAPI
   const notizie = await cercaNotizieSport();
-  // Separa notizie per argomento per aiutare DeepSeek a collegarle
+  // Costruisce contesto notizie per DeepSeek
   let notizieTesto = '';
   if (notizie.length > 0) {
-    const calcio = notizie.filter(t => /milan|juve|juventus|inter|napoli|roma|lazio|serie a|atalanta|fiorentina|torino|bologna/i.test(t));
-    const altro  = notizie.filter(t => !/milan|juve|juventus|inter|napoli|roma|lazio|serie a/i.test(t));
-    notizieTesto = `
-NOTIZIE REALI DI OGGI - CALCIO ITALIANO (OBBLIGATORIO usarle per milan/juve/inter/seriea):
-${calcio.length > 0 ? calcio.map((t,i) => `${i+1}. ${t}`).join('\n') : 'nessuna notizia calcio italiana oggi'}
+    // Filtra per squadra specifica
+    const milanNews  = notizie.filter(t => /milan/i.test(t));
+    const juveNews   = notizie.filter(t => /juve|juventus/i.test(t));
+    const interNews  = notizie.filter(t => /inter/i.test(t));
+    const calcioNews = notizie.filter(t => /napoli|roma|lazio|atalanta|fiorentina|serie a|champions|calcio/i.test(t));
+    const altroNews  = notizie.filter(t => !/milan|juve|juventus|inter|napoli|roma|lazio|serie a/i.test(t));
 
-NOTIZIE REALI DI OGGI - ALTRI SPORT (usa per sport minori):
-${altro.slice(0,6).map((t,i) => `${i+1}. ${t}`).join('\n')}`;
+    // Seleziona la notizia migliore per ogni squadra
+    const milanBase  = milanNews[0]  || calcioNews[0]  || notizie[0];
+    const juveBase   = juveNews[0]   || calcioNews[1]  || notizie[1];
+    const interBase  = interNews[0]  || calcioNews[2]  || notizie[2];
+    const extra1Base = calcioNews[3] || notizie[3];
+    const extra2Base = calcioNews[4] || notizie[4];
+
+    notizieTesto = `
+NOTIZIA BASE PER MILAN (rielabora questa in chiave ironica): "${milanBase}"
+NOTIZIA BASE PER JUVENTUS (rielabora questa in chiave ironica): "${juveBase}"
+NOTIZIA BASE PER INTER (rielabora questa in chiave ironica): "${interBase}"
+NOTIZIA BASE PER SERIEA_EXTRA1 (rielabora questa): "${extra1Base}"
+NOTIZIA BASE PER SERIEA_EXTRA2 (rielabora questa): "${extra2Base}"
+NOTIZIE SPORT MINORI: ${altroNews.slice(0,4).map(t => '"'+t+'"').join(', ')}`;
+
+    console.log('Notizie assegnate:');
+    console.log('  Milan:', milanBase ? milanBase.substring(0,60) : 'nessuna');
+    console.log('  Juve:', juveBase ? juveBase.substring(0,60) : 'nessuna');
+    console.log('  Inter:', interBase ? interBase.substring(0,60) : 'nessuna');
   }
 
   // Prompt MOLTO semplificato — campi brevi, niente apostrofi
