@@ -1,17 +1,17 @@
 const fs = require('fs');
 const path = require('path');
- 
+
 const CONTENUTI_FILE = path.join(__dirname, 'public', 'contenuti.json');
 const SONDAGGIO_FILE = path.join(__dirname, 'public', 'sondaggio.json');
 const FANTA_FILE     = path.join(__dirname, 'public', 'fantacalcio.json');
- 
+
 function leggiFantacalcio() {
   try {
     if (!fs.existsSync(FANTA_FILE)) return null;
     return JSON.parse(fs.readFileSync(FANTA_FILE, 'utf8'));
   } catch(e) { return null; }
 }
- 
+
 function fantaRiepilogo(fanta) {
   if (!fanta) return 'Dati fantacalcio non disponibili.';
   const classifica = fanta.squadre.map((s,i) => `${i+1}. ${s.squadra} ${s.punti}pt`).join(', ');
@@ -22,25 +22,30 @@ function fantaRiepilogo(fanta) {
   }
   return `${fanta.giornata}. Classifica: ${classifica}. Risultati: ${risultati}`;
 }
- 
+
 async function cercaNotizieSport() {
-  // Usa il proxy RSS sul tuo hosting — ha IP normale, non viene bloccato
   const proxyUrl = process.env.RSS_PROXY_URL || 'https://sarkietta.it/rss_proxy.php';
   try {
     const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) { console.log('Proxy RSS errore:', res.status); return []; }
+    if (!res.ok) { console.log('Proxy RSS errore:', res.status); return { calcio: [], crotone: [], sport: [] }; }
     const data = await res.json();
-    if (!data.ok) { console.log('Proxy RSS fallito'); return []; }
-    const titoli = data.titoli || [];
-    console.log(`Proxy RSS: trovate ${titoli.length} notizie reali`);
-    titoli.slice(0,8).forEach((t,i) => console.log(`  ${i+1}. ${t.substring(0,80)}`));
-    return titoli;
+    if (!data.ok) { console.log('Proxy RSS fallito'); return { calcio: [], crotone: [], sport: [] }; }
+
+    const tagged = data.tagged || data.titoli.map(t => ({ t, tag: 'calcio' }));
+    const calcio  = tagged.filter(i => i.tag === 'calcio').map(i => i.t).slice(0, 8);
+    const crotone = tagged.filter(i => i.tag === 'crotone').map(i => i.t).slice(0, 5);
+    const sport   = tagged.filter(i => ['f1','moto','tennis'].includes(i.tag)).map(i => i.t).slice(0, 5);
+
+    console.log(`Proxy RSS: calcio=${calcio.length}, crotone=${crotone.length}, sport=${sport.length}`);
+    calcio.slice(0,4).forEach((t,i) => console.log(`  calcio ${i+1}. ${t.substring(0,70)}`));
+    crotone.slice(0,3).forEach((t,i) => console.log(`  crotone ${i+1}. ${t.substring(0,70)}`));
+    return { calcio, crotone, sport };
   } catch(e) {
     console.log('Proxy RSS fallito:', e.message);
-    return [];
+    return { calcio: [], crotone: [], sport: [] };
   }
 }
- 
+
 async function callDeepSeek(prompt, systemMsg) {
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -63,7 +68,7 @@ async function callDeepSeek(prompt, systemMsg) {
   console.log('Tokens:', data.usage.total_tokens);
   return data.choices[0].message.content.trim();
 }
- 
+
 function pulisciRaw(raw) {
   // Fix encoding UTF-8 mal interpretato
   try { raw = decodeURIComponent(escape(raw)); } catch(e) {}
@@ -83,7 +88,7 @@ function pulisciRaw(raw) {
   raw = raw.replace(/([a-zA-Z])'([a-zA-Z])/g, '$1$2');
   return raw;
 }
- 
+
 const TEMI = [
   'investitori arabi comprano il Crotone', 'Haaland vuole giocare sul mare',
   'nuovo stadio galleggiante sullo Ionio', 'Mourinho chiede la panchina del Crotone',
@@ -92,40 +97,49 @@ const TEMI = [
   'Crotone primo in Serie D con record storico', 'VAR del Crotone funziona con il telefono di casa',
   'Crotone vince il Nobel per la tattica difensiva', 'Ronaldo offerto al Crotone per 50 euro'
 ];
- 
+
 async function genera() {
   console.log('=== Sarkietta ===');
   console.log('Data:', new Date().toISOString());
- 
+
   const oggi = new Date().toLocaleDateString('it-IT', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
   const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
   const tema = TEMI[dayOfYear % TEMI.length];
   const ts = Date.now();
- 
+
   const fanta = leggiFantacalcio();
   const fantaRiep = fantaRiepilogo(fanta);
   console.log('Tema oggi:', tema);
- 
+
   // Cerca notizie reali via NewsAPI
   const notizie = await cercaNotizieSport();
-  const notizieTesto = notizie.length > 0
-    ? '\nNOTIZIE REALI DI OGGI (usale come base per Milan/Juve/Inter/SerieA):\n' + notizie.map((t,i) => `${i+1}. ${t}`).join('\n')
-    : '';
- 
+  // Separa notizie per argomento per aiutare DeepSeek a collegarle
+  let notizieTesto = '';
+  if (notizie.length > 0) {
+    const calcio = notizie.filter(t => /milan|juve|juventus|inter|napoli|roma|lazio|serie a|atalanta|fiorentina|torino|bologna/i.test(t));
+    const altro  = notizie.filter(t => !/milan|juve|juventus|inter|napoli|roma|lazio|serie a/i.test(t));
+    notizieTesto = `
+NOTIZIE REALI DI OGGI - CALCIO ITALIANO (OBBLIGATORIO usarle per milan/juve/inter/seriea):
+${calcio.length > 0 ? calcio.map((t,i) => `${i+1}. ${t}`).join('\n') : 'nessuna notizia calcio italiana oggi'}
+
+NOTIZIE REALI DI OGGI - ALTRI SPORT (usa per sport minori):
+${altro.slice(0,6).map((t,i) => `${i+1}. ${t}`).join('\n')}`;
+  }
+
   // Prompt MOLTO semplificato — campi brevi, niente apostrofi
   const prompt = `Sei un giornalista satirico italiano. Oggi ${oggi}. ID sessione ${ts}.
- 
+
 Tema Crotone: ${tema}
 Fantacalcio: ${fantaRiep}
- 
+
 Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
 - Nessun apostrofo (scrivi "dell Inter" non "dell'Inter")  
 - Nessuna virgoletta dentro i valori
 - Massimo 12 parole per valore
 - Solo testo semplice
- 
+
 {
   "crotone_titolo": "notizia assurda sul tema ${tema}",
   "crotone_sub": "sottotitolo breve",
@@ -177,7 +191,7 @@ Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
   "vince2_nome": "nome sportivo italiano",
   "vince2_testo": "commento ironico"
 }`;
- 
+
   let flat = null;
   for (let t = 1; t <= 3; t++) {
     console.log(`Tentativo ${t}/3...`);
@@ -193,7 +207,7 @@ Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
       if (t < 3) await new Promise(r => setTimeout(r, t * 8000));
     }
   }
- 
+
   if (!flat) {
     console.log('Tutti i tentativi falliti — uso fallback');
     if (fs.existsSync(CONTENUTI_FILE)) {
@@ -204,7 +218,7 @@ Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
     }
     return;
   }
- 
+
   // Converti flat -> struttura contenuti
   const contenuti = {
     generato_il: new Date().toISOString(),
@@ -230,7 +244,7 @@ Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
       { nome: flat.vince2_nome, testo: flat.vince2_testo }
     ]
   };
- 
+
   // Narrativa fanta separata
   if (fanta) {
     console.log('\nGenerazione narrativa fanta...');
@@ -257,7 +271,7 @@ Zero apostrofi. Zero virgolette nei valori.`;
     }
     contenuti.fanta_data = fanta;
   }
- 
+
   fs.writeFileSync(CONTENUTI_FILE, JSON.stringify(contenuti, null, 2), 'utf8');
   fs.writeFileSync(SONDAGGIO_FILE, JSON.stringify({
     domanda: contenuti.sondaggio_domanda,
@@ -265,10 +279,10 @@ Zero apostrofi. Zero virgolette nei valori.`;
     voti: [0, 0, 0, 0],
     data: new Date().toDateString()
   }, null, 2), 'utf8');
- 
+
   console.log('\nContenuti salvati:', new Date().toISOString());
 }
- 
+
 genera().catch(err => {
   console.error('ERRORE CRITICO:', err.message);
   process.exit(0);
