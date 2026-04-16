@@ -23,30 +23,44 @@ function fantaRiepilogo(fanta) {
   return `${fanta.giornata}. Classifica: ${classifica}. Risultati: ${risultati}`;
 }
 
-async function cercaNotizieSport() {
-  const proxyUrl = process.env.RSS_PROXY_URL || 'https://sarkietta.it/rss_proxy.php';
+async function cercaNotizie() {
   try {
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) { console.log('Proxy RSS errore:', res.status); return { calcio: [], crotone: [], sport: [] }; }
+    const res = await fetch('https://sarkietta.it/rss_proxy.php', {
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) return [];
     const data = await res.json();
-    if (!data.ok) { console.log('Proxy RSS fallito'); return { calcio: [], crotone: [], sport: [] }; }
-
-    const tagged = data.tagged || data.titoli.map(t => ({ t, tag: 'calcio' }));
-    const calcio  = tagged.filter(i => i.tag === 'calcio').map(i => i.t).slice(0, 8);
-    const crotone = tagged.filter(i => i.tag === 'crotone').map(i => i.t).slice(0, 5);
-    const sport   = tagged.filter(i => ['f1','moto','tennis'].includes(i.tag)).map(i => i.t).slice(0, 5);
-
-    console.log(`Proxy RSS: calcio=${calcio.length}, crotone=${crotone.length}, sport=${sport.length}`);
-    calcio.slice(0,4).forEach((t,i) => console.log(`  calcio ${i+1}. ${t.substring(0,70)}`));
-    crotone.slice(0,3).forEach((t,i) => console.log(`  crotone ${i+1}. ${t.substring(0,70)}`));
-    return { calcio, crotone, sport };
+    const titoli = data.titoli || [];
+    console.log(`Notizie reali trovate: ${titoli.length}`);
+    titoli.slice(0, 6).forEach((t,i) => console.log(`  ${i+1}. ${t.substring(0,80)}`));
+    return titoli;
   } catch(e) {
     console.log('Proxy RSS fallito:', e.message);
-    return { calcio: [], crotone: [], sport: [] };
+    return [];
   }
 }
 
-async function callDeepSeek(prompt, systemMsg) {
+function pulisciRaw(raw) {
+  raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('Nessun JSON trovato');
+  raw = raw.substring(start, end + 1);
+  raw = raw.replace(/[\r\n\t]/g, ' ').replace(/ {2,}/g, ' ').trim();
+  raw = raw.replace(/([a-zA-Z])'([a-zA-ZÀ-ù])/g, '$1$2');
+  raw = raw.replace(/[\u2018\u2019\u201C\u201D]/g, '');
+  let open = 0, close = 0, inStr = false, escape = false;
+  for (const c of raw) {
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (!inStr) { if (c === '{') open++; if (c === '}') close++; }
+  }
+  if (open - close > 0) raw += '}'.repeat(open - close);
+  return raw;
+}
+
+async function callDeepSeek(prompt, system) {
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
@@ -58,7 +72,7 @@ async function callDeepSeek(prompt, systemMsg) {
       max_tokens: 3000,
       temperature: 1.1,
       messages: [
-        { role: 'system', content: systemMsg },
+        { role: 'system', content: system },
         { role: 'user', content: prompt }
       ]
     })
@@ -69,33 +83,13 @@ async function callDeepSeek(prompt, systemMsg) {
   return data.choices[0].message.content.trim();
 }
 
-function pulisciRaw(raw) {
-  // Fix encoding UTF-8 mal interpretato
-  try { raw = decodeURIComponent(escape(raw)); } catch(e) {}
-  // Rimuovi backtick markdown
-  raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
-  // Estrai solo il JSON
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('Nessun JSON trovato');
-  raw = raw.substring(start, end + 1);
-  // Normalizza spazi
-  raw = raw.replace(/[\r\n\t]/g, ' ').replace(/ {2,}/g, ' ').trim();
-  // Sostituisce virgolette tipografiche
-  raw = raw.replace(/[\u2018\u2019\u2032]/g, '');
-  raw = raw.replace(/[\u201C\u201D]/g, '');
-  // Rimuove apostrofi dentro le stringhe JSON (tra due caratteri alfanumerici)
-  raw = raw.replace(/([a-zA-Z])'([a-zA-Z])/g, '$1$2');
-  return raw;
-}
-
-const TEMI = [
-  'investitori arabi comprano il Crotone', 'Haaland vuole giocare sul mare',
-  'nuovo stadio galleggiante sullo Ionio', 'Mourinho chiede la panchina del Crotone',
-  'Mbappe rifiuta il PSG per il Crotone', 'Champions League 2030 obiettivo del Crotone',
-  'Crotone batte il Real Madrid in amichevole', 'presidente del Crotone va in TV a piangere',
-  'Crotone primo in Serie D con record storico', 'VAR del Crotone funziona con il telefono di casa',
-  'Crotone vince il Nobel per la tattica difensiva', 'Ronaldo offerto al Crotone per 50 euro'
+const TEMI_CROTONE = [
+  'trattativa per Haaland', 'nuovo stadio da 100000 posti',
+  'accordo con Mbappe', 'assunzione di Mourinho',
+  'Crotone in Champions per errore', 'presidente miliardario arabo',
+  'Ronaldo offerto per 50 euro', 'VAR del Crotone e un vecchio con binocolo',
+  'Crotone vince Nobel per la difesa', 'fusione con il Napoli',
+  'campo sintetico fatto di polenta', 'Crotone candidato ai Mondiali 2030'
 ];
 
 async function genera() {
@@ -106,118 +100,47 @@ async function genera() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
   const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-  const tema = TEMI[dayOfYear % TEMI.length];
   const ts = Date.now();
+  const temaCrotone = TEMI_CROTONE[dayOfYear % TEMI_CROTONE.length];
 
-  const fanta = leggiFantacalcio();
+  const [notizie, fanta] = await Promise.all([
+    cercaNotizie(),
+    Promise.resolve(leggiFantacalcio())
+  ]);
+
   const fantaRiep = fantaRiepilogo(fanta);
-  console.log('Tema oggi:', tema);
 
-  // Cerca notizie reali via NewsAPI
-  const notizie = await cercaNotizieSport();
-  // Costruisce contesto notizie per DeepSeek
-  let notizieTesto = '';
-  if (notizie.length > 0) {
-    // Filtra per squadra specifica
-    const milanNews  = notizie.filter(t => /milan/i.test(t));
-    const juveNews   = notizie.filter(t => /juve|juventus/i.test(t));
-    const interNews  = notizie.filter(t => /inter/i.test(t));
-    const calcioNews = notizie.filter(t => /napoli|roma|lazio|atalanta|fiorentina|serie a|champions|calcio/i.test(t));
-    const altroNews  = notizie.filter(t => !/milan|juve|juventus|inter|napoli|roma|lazio|serie a/i.test(t));
+  const notizieTesto = notizie.length > 0
+    ? notizie.map((t,i) => `${i+1}. ${t}`).join('\n')
+    : 'Nessuna notizia disponibile oggi.';
 
-    // Seleziona la notizia migliore per ogni squadra
-    const milanBase  = milanNews[0]  || calcioNews[0]  || notizie[0];
-    const juveBase   = juveNews[0]   || calcioNews[1]  || notizie[1];
-    const interBase  = interNews[0]  || calcioNews[2]  || notizie[2];
-    const extra1Base = calcioNews[3] || notizie[3];
-    const extra2Base = calcioNews[4] || notizie[4];
+  // PROMPT SEMPLICE: notizie reali + rielaborazione ironica
+  const prompt = `[${ts}] Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano.
+Oggi: ${oggi}
 
-    notizieTesto = `
-NOTIZIA BASE PER MILAN (rielabora questa in chiave ironica): "${milanBase}"
-NOTIZIA BASE PER JUVENTUS (rielabora questa in chiave ironica): "${juveBase}"
-NOTIZIA BASE PER INTER (rielabora questa in chiave ironica): "${interBase}"
-NOTIZIA BASE PER SERIEA_EXTRA1 (rielabora questa): "${extra1Base}"
-NOTIZIA BASE PER SERIEA_EXTRA2 (rielabora questa): "${extra2Base}"
-NOTIZIE SPORT MINORI: ${altroNews.slice(0,4).map(t => '"'+t+'"').join(', ')}`;
+NOTIZIE REALI DI OGGI (prendi quelle che preferisci e rielaborale in chiave ironica):
+${notizieTesto}
 
-    console.log('Notizie assegnate:');
-    console.log('  Milan:', milanBase ? milanBase.substring(0,60) : 'nessuna');
-    console.log('  Juve:', juveBase ? juveBase.substring(0,60) : 'nessuna');
-    console.log('  Inter:', interBase ? interBase.substring(0,60) : 'nessuna');
-  }
+FANTACALCIO SARKIASUPERLEGA:
+${fantaRiep}
 
-  // Prompt MOLTO semplificato — campi brevi, niente apostrofi
-  const prompt = `Sei un giornalista satirico italiano. Oggi ${oggi}. ID sessione ${ts}.
+ISTRUZIONI:
+- Scegli liberamente le notizie reali sopra e rielaborale in modo ironico e sarcastico
+- Per il Crotone: meta reale meta inventato, tema suggerito: "${temaCrotone}"
+- Per fanta_flop e fanta_top: usa i dati reali della classifica
+- Nessun apostrofo nei valori JSON (scrivi "dell Inter" non "dell'Inter")
+- Max 15 parole per campo
 
-Tema Crotone: ${tema}
-Fantacalcio: ${fantaRiep}
-
-Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
-- Nessun apostrofo (scrivi "dell Inter" non "dell'Inter")  
-- Nessuna virgoletta dentro i valori
-- Massimo 12 parole per valore
-- Solo testo semplice
-
-{
-  "crotone_titolo": "notizia assurda sul tema ${tema}",
-  "crotone_sub": "sottotitolo breve",
-  "crotone_testo": "testo breve",
-  "milan_titolo": "notizia ironica sul Milan",
-  "milan_testo": "testo breve",
-  "juve_titolo": "notizia ironica sulla Juventus",
-  "juve_testo": "testo breve",
-  "inter_titolo": "notizia ironica sull Inter",
-  "inter_testo": "testo breve",
-  "extra1_titolo": "notizia su altra squadra Serie A",
-  "extra1_testo": "testo breve",
-  "extra1_team": "nome squadra",
-  "extra2_titolo": "altra notizia Serie A",
-  "extra2_testo": "testo breve",
-  "extra2_team": "nome squadra",
-  "fanta_flop_titolo": "squadra flop con ironia",
-  "fanta_flop_testo": "spiegazione comica",
-  "fanta_flop_squadra": "nome squadra reale dalla classifica",
-  "fanta_top_titolo": "squadra top con ironia",
-  "fanta_top_testo": "spiegazione comica",
-  "fanta_top_squadra": "nome squadra reale dalla classifica",
-  "fanta_commento": "commento ironico sulla giornata",
-  "tennis_titolo": "notizia ironica sul tennis",
-  "tennis_testo": "testo breve",
-  "f1_titolo": "notizia ironica sulla Formula 1",
-  "f1_testo": "testo breve",
-  "altro_sport": "nome sport",
-  "altro_titolo": "notizia ironica",
-  "altro_testo": "testo breve",
-  "ticker1": "breaking news breve",
-  "ticker2": "breaking news breve",
-  "ticker3": "breaking news breve",
-  "ticker4": "breaking news breve",
-  "ticker5": "breaking news breve",
-  "sondaggio": "domanda ironica sul calcio",
-  "opz1": "opzione A",
-  "opz2": "opzione B",
-  "opz3": "opzione C",
-  "opz4": "opzione D",
-  "crotone2_team": "area tematica es Mercato o Infrastrutture",
-  "crotone2_titolo": "seconda notizia assurda sul Crotone diversa dalla prima",
-  "crotone2_testo": "testo breve",
-  "crotone3_team": "area tematica diversa",
-  "crotone3_titolo": "terza notizia assurda sul Crotone completamente diversa",
-  "crotone3_testo": "testo breve",
-  "vince1_nome": "nome sportivo italiano",
-  "vince1_testo": "commento ironico",
-  "vince2_nome": "nome sportivo italiano",
-  "vince2_testo": "commento ironico"
-}`;
+Rispondi SOLO con JSON:
+{"n1":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n2":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n3":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n4":{"titolo":"...","testo":"...","team":"..."},"n5":{"titolo":"...","testo":"...","team":"..."},"n6":{"titolo":"...","testo":"...","team":"..."},"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"crotone2":{"titolo":"...","testo":"...","team":"..."},"crotone3":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"...","squadra":"..."},"fanta_top":{"titolo":"...","testo":"...","squadra":"..."},"fanta_commento":"...","minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}`;
 
   let flat = null;
   for (let t = 1; t <= 3; t++) {
     console.log(`Tentativo ${t}/3...`);
     try {
-      const raw = await callDeepSeek(prompt, `Giornalista satirico. ID:${ts}. Giorno:${dayOfYear}. ZERO apostrofi nei valori JSON.`);
-      console.log('Raw (primi 200):', raw.substring(0, 200));
-      const cleaned = pulisciRaw(raw);
-      flat = JSON.parse(cleaned);
+      const raw = await callDeepSeek(prompt, `Giornalista satirico italiano. ID:${ts}. Giorno:${dayOfYear}. Usa le notizie reali fornite.`);
+      console.log('Raw (primi 150):', raw.substring(0, 150));
+      flat = JSON.parse(pulisciRaw(raw));
       console.log('JSON OK!');
       break;
     } catch(err) {
@@ -227,7 +150,7 @@ Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
   }
 
   if (!flat) {
-    console.log('Tutti i tentativi falliti — uso fallback');
+    console.log('Fallback contenuti precedenti.');
     if (fs.existsSync(CONTENUTI_FILE)) {
       const prev = JSON.parse(fs.readFileSync(CONTENUTI_FILE, 'utf8'));
       prev.fallback = true;
@@ -237,43 +160,40 @@ Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
     return;
   }
 
-  // Converti flat -> struttura contenuti
+  // Mappa flat -> struttura contenuti
   const contenuti = {
     generato_il: new Date().toISOString(),
-    crotone: { titolo: flat.crotone_titolo, sottotitolo: flat.crotone_sub, testo: flat.crotone_testo },
-    milan:   { titolo: flat.milan_titolo, testo: flat.milan_testo, badge: 'Crisi Nera' },
-    juve:    { titolo: flat.juve_titolo,  testo: flat.juve_testo,  badge: 'Fenomeno?' },
-    inter:   { titolo: flat.inter_titolo, testo: flat.inter_testo, badge: "Bidone d'Oro" },
-    seriea_extra:  { titolo: flat.extra1_titolo, testo: flat.extra1_testo, team: flat.extra1_team },
-    seriea_extra2: { titolo: flat.extra2_titolo, testo: flat.extra2_testo, team: flat.extra2_team },
-    fanta_flop:    { titolo: flat.fanta_flop_titolo, testo: flat.fanta_flop_testo, squadra: flat.fanta_flop_squadra },
-    fanta_top:     { titolo: flat.fanta_top_titolo,  testo: flat.fanta_top_testo,  squadra: flat.fanta_top_squadra },
+    // Notizie Serie A libere (non vincolate a squadra specifica)
+    milan:  { titolo: flat.n1.titolo, testo: flat.n1.testo, badge: flat.n1.badge || 'Serie A' },
+    juve:   { titolo: flat.n2.titolo, testo: flat.n2.testo, badge: flat.n2.badge || 'Serie A' },
+    inter:  { titolo: flat.n3.titolo, testo: flat.n3.testo, badge: flat.n3.badge || 'Serie A' },
+    seriea_extra:  { titolo: flat.n4.titolo, testo: flat.n4.testo, team: flat.n4.team || 'Serie A' },
+    seriea_extra2: { titolo: flat.n5.titolo, testo: flat.n5.testo, team: flat.n5.team || 'Serie A' },
+    seriea_extra3: { titolo: flat.n6.titolo, testo: flat.n6.testo, team: flat.n6.team || 'Serie A' },
+    crotone:  { titolo: flat.crotone.titolo, sottotitolo: flat.crotone.sottotitolo, testo: flat.crotone.testo },
+    crotone2: { titolo: flat.crotone2.titolo, testo: flat.crotone2.testo, team: flat.crotone2.team || 'Crotone' },
+    crotone3: { titolo: flat.crotone3.titolo, testo: flat.crotone3.testo, team: flat.crotone3.team || 'Crotone' },
+    fanta_flop:    { titolo: flat.fanta_flop.titolo, testo: flat.fanta_flop.testo, squadra: flat.fanta_flop.squadra },
+    fanta_top:     { titolo: flat.fanta_top.titolo,  testo: flat.fanta_top.testo,  squadra: flat.fanta_top.squadra },
     fanta_commento: flat.fanta_commento,
-    minori_tennis: { titolo: flat.tennis_titolo, testo: flat.tennis_testo },
-    minori_f1:     { titolo: flat.f1_titolo, testo: flat.f1_testo },
-    minori_altro:  { categoria: flat.altro_sport, titolo: flat.altro_titolo, testo: flat.altro_testo },
-    ticker: [flat.ticker1, flat.ticker2, flat.ticker3, flat.ticker4, flat.ticker5],
-    sondaggio_domanda: flat.sondaggio,
-    sondaggio_opzioni: [flat.opz1, flat.opz2, flat.opz3, flat.opz4],
-    crotone2: { team: flat.crotone2_team, titolo: flat.crotone2_titolo, testo: flat.crotone2_testo },
-    crotone3: { team: flat.crotone3_team, titolo: flat.crotone3_titolo, testo: flat.crotone3_testo },
-    vincenti: [
-      { nome: flat.vince1_nome, testo: flat.vince1_testo },
-      { nome: flat.vince2_nome, testo: flat.vince2_testo }
-    ]
+    minori_tennis: { titolo: flat.minori_tennis.titolo, testo: flat.minori_tennis.testo },
+    minori_f1:     { titolo: flat.minori_f1.titolo,     testo: flat.minori_f1.testo },
+    minori_altro:  { categoria: flat.minori_altro.categoria, titolo: flat.minori_altro.titolo, testo: flat.minori_altro.testo },
+    ticker: [flat.ticker[0], flat.ticker[1], flat.ticker[2], flat.ticker[3], flat.ticker[4]],
+    sondaggio_domanda: flat.sondaggio_domanda,
+    sondaggio_opzioni: flat.sondaggio_opzioni,
+    vincenti: flat.vincenti
   };
 
-  // Narrativa fanta separata
+  // Narrativa fanta
   if (fanta) {
     console.log('\nGenerazione narrativa fanta...');
     try {
       const nts = Date.now();
-      const np = `Analista sarcastico fantacalcio. Dati: ${fantaRiep}. Sessione ${nts}.
-Scrivi 3 frasi ironiche sulla stagione della Sarkiasuperlega. Rispondi SOLO con JSON:
-{"titolo":"titolo ironico max 8 parole","p1":"frase 1 max 25 parole","p2":"frase 2 max 25 parole","p3":"frase 3 max 25 parole"}
-Zero apostrofi. Zero virgolette nei valori.`;
-      const nraw = await callDeepSeek(np, `Satirico. ID:${nts}. Zero apostrofi.`);
-      console.log('Narrativa raw:', nraw.substring(0, 150));
+      const np = `Analista sarcastico fantacalcio. Dati: ${fantaRiep}. ID:${nts}.
+JSON: {"titolo":"titolo ironico max 8 parole","p1":"frase ironica 25 parole","p2":"frase ironica 25 parole","p3":"frase ironica 25 parole"}
+Zero apostrofi nei valori.`;
+      const nraw = await callDeepSeek(np, `Satirico. ID:${nts}.`);
       const nj = JSON.parse(pulisciRaw(nraw));
       contenuti.fanta_narrativa = { titolo: nj.titolo, paragrafi: [nj.p1, nj.p2, nj.p3], record: [] };
       console.log('Narrativa OK:', nj.titolo);
@@ -281,10 +201,7 @@ Zero apostrofi. Zero virgolette nei valori.`;
       console.log('Narrativa fallita:', err.message);
       if (fs.existsSync(CONTENUTI_FILE)) {
         const prev = JSON.parse(fs.readFileSync(CONTENUTI_FILE, 'utf8'));
-        if (prev.fanta_narrativa) {
-          contenuti.fanta_narrativa = prev.fanta_narrativa;
-          console.log('Uso narrativa precedente');
-        }
+        if (prev.fanta_narrativa) contenuti.fanta_narrativa = prev.fanta_narrativa;
       }
     }
     contenuti.fanta_data = fanta;
@@ -302,6 +219,6 @@ Zero apostrofi. Zero virgolette nei valori.`;
 }
 
 genera().catch(err => {
-  console.error('ERRORE CRITICO:', err.message);
+  console.error('ERRORE:', err.message);
   process.exit(0);
 });
