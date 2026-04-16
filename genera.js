@@ -23,11 +23,29 @@ function fantaRiepilogo(fanta) {
   return `${fanta.giornata}. Classifica: ${classifica}. Risultati: ${risultati}`;
 }
 
+async function cercaNotizieSport() {
+  // Usa il proxy RSS sul tuo hosting — ha IP normale, non viene bloccato
+  const proxyUrl = process.env.RSS_PROXY_URL || 'https://sarkietta.it/rss_proxy.php';
+  try {
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) { console.log('Proxy RSS errore:', res.status); return []; }
+    const data = await res.json();
+    if (!data.ok) { console.log('Proxy RSS fallito'); return []; }
+    const titoli = data.titoli || [];
+    console.log(`Proxy RSS: trovate ${titoli.length} notizie reali`);
+    titoli.slice(0,8).forEach((t,i) => console.log(`  ${i+1}. ${t.substring(0,80)}`));
+    return titoli;
+  } catch(e) {
+    console.log('Proxy RSS fallito:', e.message);
+    return [];
+  }
+}
+
 async function callDeepSeek(prompt, systemMsg) {
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
       'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
     },
     body: JSON.stringify({
@@ -47,6 +65,8 @@ async function callDeepSeek(prompt, systemMsg) {
 }
 
 function pulisciRaw(raw) {
+  // Fix encoding UTF-8 mal interpretato
+  try { raw = decodeURIComponent(escape(raw)); } catch(e) {}
   // Rimuovi backtick markdown
   raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
   // Estrai solo il JSON
@@ -87,6 +107,12 @@ async function genera() {
   const fanta = leggiFantacalcio();
   const fantaRiep = fantaRiepilogo(fanta);
   console.log('Tema oggi:', tema);
+
+  // Cerca notizie reali via NewsAPI
+  const notizie = await cercaNotizieSport();
+  const notizieTesto = notizie.length > 0
+    ? '\nNOTIZIE REALI DI OGGI (usale come base per Milan/Juve/Inter/SerieA):\n' + notizie.map((t,i) => `${i+1}. ${t}`).join('\n')
+    : '';
 
   // Prompt MOLTO semplificato — campi brevi, niente apostrofi
   const prompt = `Sei un giornalista satirico italiano. Oggi ${oggi}. ID sessione ${ts}.
