@@ -140,6 +140,12 @@ Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
   "opz2": "opzione B",
   "opz3": "opzione C",
   "opz4": "opzione D",
+  "crotone2_team": "area tematica es Mercato o Infrastrutture",
+  "crotone2_titolo": "seconda notizia assurda sul Crotone diversa dalla prima",
+  "crotone2_testo": "testo breve",
+  "crotone3_team": "area tematica diversa",
+  "crotone3_titolo": "terza notizia assurda sul Crotone completamente diversa",
+  "crotone3_testo": "testo breve",
   "vince1_nome": "nome sportivo italiano",
   "vince1_testo": "commento ironico",
   "vince2_nome": "nome sportivo italiano",
@@ -191,6 +197,8 @@ Genera un oggetto JSON con questi campi. REGOLE ASSOLUTE:
     ticker: [flat.ticker1, flat.ticker2, flat.ticker3, flat.ticker4, flat.ticker5],
     sondaggio_domanda: flat.sondaggio,
     sondaggio_opzioni: [flat.opz1, flat.opz2, flat.opz3, flat.opz4],
+    crotone2: { team: flat.crotone2_team, titolo: flat.crotone2_titolo, testo: flat.crotone2_testo },
+    crotone3: { team: flat.crotone3_team, titolo: flat.crotone3_titolo, testo: flat.crotone3_testo },
     vincenti: [
       { nome: flat.vince1_nome, testo: flat.vince1_testo },
       { nome: flat.vince2_nome, testo: flat.vince2_testo }
