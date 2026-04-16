@@ -262,19 +262,15 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
   <!-- Serie A -->
   <div class="section-hd"><h2>Serie A</h2><div class="line"></div><span class="badge">Ultime ore</span></div>
   <div class="article-grid">
-    <?php foreach (['milan' => 'AC Milan', 'juve' => 'Juventus FC', 'inter' => 'Inter Milan'] as $key => $nome):
-      $art = $contenuti[$key] ?? null; ?>
+    <?php foreach (['n1','n2','n3'] as $key):
+      $art = $contenuti[$key] ?? null;
+      if (!$art) continue; ?>
     <div class="acard">
-      <?php if ($art): ?>
-        <span class="pill <?= badgeClass($art['badge'] ?? '') ?>"><?= safe($art, 'badge') ?></span>
-        <div class="team"><?= $nome ?></div>
-        <h3><?= safe($art, 'titolo') ?></h3>
-        <p><?= safe($art, 'testo') ?></p>
-        <div class="meta">Generato oggi</div>
-      <?php else: ?>
-        <div class="team"><?= $nome ?></div>
-        <h3 style="color:#aaa">Notizie in arrivo...</h3>
-      <?php endif; ?>
+      <span class="pill <?= badgeClass($art['badge'] ?? '') ?>"><?= safe($art, 'badge') ?></span>
+      <div class="team"><?= safe($art, 'team') ?></div>
+      <h3><?= safe($art, 'titolo') ?></h3>
+      <p><?= safe($art, 'testo') ?></p>
+      <div class="meta">Generato oggi</div>
     </div>
     <?php endforeach; ?>
   </div>
@@ -330,19 +326,16 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
 
 <!-- SERIE A -->
 <div id="tab-seriea" class="tab">
-  <div class="section-hd"><h2>Serie A</h2><div class="line"></div><span class="badge">Aggiornamenti</span></div>
+  <div class="section-hd"><h2>Serie A e Calcio</h2><div class="line"></div><span class="badge">Aggiornamenti</span></div>
   <div class="article-grid">
-    <?php foreach (['milan' => 'AC Milan', 'juve' => 'Juventus FC', 'inter' => 'Inter Milan',
-                    'seriea_extra' => null, 'seriea_extra2' => null] as $key => $nome):
+    <?php foreach (['n1','n2','n3','n4','n5','n6'] as $key):
       $art = $contenuti[$key] ?? null;
-      if (!$art) continue;
-      $team = $nome ?: ($art['team'] ?? 'Serie A');
-    ?>
+      if (!$art) continue; ?>
     <div class="acard">
       <?php if (!empty($art['badge'])): ?>
         <span class="pill <?= badgeClass($art['badge']) ?>"><?= safe($art, 'badge') ?></span>
       <?php endif; ?>
-      <div class="team"><?= htmlspecialchars($team) ?></div>
+      <div class="team"><?= safe($art, 'team') ?></div>
       <h3><?= safe($art, 'titolo') ?></h3>
       <p><?= safe($art, 'testo') ?></p>
       <div class="meta">Generato oggi</div>
