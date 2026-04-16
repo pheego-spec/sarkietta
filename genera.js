@@ -13,10 +13,7 @@ const RSS_FEEDS = [
 
 async function leggiRSS(url) {
   try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(8000)
-    });
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const xml = await res.text();
     const titoli = [];
@@ -31,10 +28,7 @@ async function leggiRSS(url) {
       }
     }
     return titoli;
-  } catch (e) {
-    console.log(`RSS ${url} fallito: ${e.message}`);
-    return [];
-  }
+  } catch (e) { console.log(`RSS ${url} fallito: ${e.message}`); return []; }
 }
 
 async function leggiTuttiRSS() {
@@ -55,42 +49,45 @@ function leggiFantacalcio() {
 
 function fantaRiepilogo(fanta) {
   if (!fanta) return 'Dati fantacalcio non disponibili.';
-  const classifica = fanta.squadre
-    .map((s, i) => `${i+1}. ${s.squadra} ${s.punti}pt`)
-    .join(', ');
+  const classifica = fanta.squadre.map((s,i) => `${i+1}. ${s.squadra} ${s.punti}pt`).join(', ');
   let risultati = '';
   if (fanta.ultima_giornata && fanta.ultima_giornata.risultati) {
     risultati = fanta.ultima_giornata.risultati
-      .map(r => `${r.casa} ${r.gol_casa}-${r.gol_fuori} ${r.fuori} (${r.pt_casa} vs ${r.pt_fuori})`)
-      .join('; ');
+      .map(r => `${r.casa} ${r.gol_casa}-${r.gol_fuori} ${r.fuori} (voti: ${r.pt_casa} vs ${r.pt_fuori})`).join('; ');
   }
-  return `${fanta.giornata}. Classifica: ${classifica}. Ultima giornata: ${risultati}`;
+  return `${fanta.giornata}. Classifica: ${classifica}. Risultati: ${risultati}`;
 }
 
-async function chiamaDeepSeek(oggi, notizie, fantaRiep, seed) {
+async function chiamaDeepSeek(oggi, notizie, fantaRiep) {
+  // Timestamp univoco al millisecondo per impedire qualsiasi cache
+  const ts = Date.now();
+  const random = Math.floor(Math.random() * 999999);
+
   const notizieTesto = notizie.length > 0
-    ? notizie.map((t, i) => `${i+1}. ${t}`).join('\n')
+    ? notizie.map((t,i) => `${i+1}. ${t}`).join('\n')
     : 'Nessuna notizia disponibile.';
 
-  const prompt = `Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano per amici 40enni.
-Data di oggi: ${oggi} (seed variazione: ${seed})
+  const prompt = `[ID:${ts}-${random}] Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano.
+Oggi: ${oggi}
 
-NOTIZIE REALI DI OGGI:
+NOTIZIE REALI (usa queste come base per Milan/Juve/Inter/SerieA):
 ${notizieTesto}
 
-DATI FANTACALCIO SARKIASUPERLEGA:
+FANTACALCIO SARKIASUPERLEGA:
 ${fantaRiep}
 
-Regole:
-- Usa le notizie reali come base per Milan, Juve, Inter, Serie A — rielaborale in chiave ironica
-- Per Crotone, sport minori, sondaggio: inventa liberamente
-- Per fantacalcio: usa i dati reali e crea narrazione ironica sulla giornata
-- IMPORTANTE: ogni giorno i contenuti devono essere COMPLETAMENTE DIVERSI dai giorni precedenti
-- Max 15 parole per campo, tutto su una riga
+ISTRUZIONI TASSATIVE:
+- Ogni articolo deve avere titolo e contenuto COMPLETAMENTE ORIGINALE e DIVERSO da qualsiasi altro giorno
+- Milan/Juve/Inter/SerieA: rielabora le notizie reali sopra in chiave ironica — NON inventare fatti
+- Crotone: sempre protagonista di notizie assurde e impossibili (trattative con campioni, stadi faraonici, ecc)
+- Sport minori: ironia da tifoso calcio che guarda sport "inferiori"
+- fanta_narrativa: analisi ironica della stagione basata sui dati reali sopra, 3 paragrafi da 40 parole
+- Max 15 parole per titolo, max 20 parole per testo
+- Tutto su una riga, zero a capo nelle stringhe
 
-Rispondi SOLO con JSON valido, zero markdown:
+Rispondi SOLO con JSON valido, zero markdown, zero testo extra:
 
-{"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"milan":{"titolo":"...","testo":"...","badge":"Crisi Nera"},"juve":{"titolo":"...","testo":"...","badge":"Fenomeno?"},"inter":{"titolo":"...","testo":"...","badge":"Bidone d'Oro"},"seriea_extra":{"titolo":"...","testo":"...","team":"..."},"seriea_extra2":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"...","squadra":"..."},"fanta_top":{"titolo":"...","testo":"...","squadra":"..."},"fanta_commento":"...","fanta_narrativa":{"titolo":"...","paragrafi":["paragrafo 1 max 40 parole","paragrafo 2 max 40 parole","paragrafo 3 max 40 parole"]},"minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}`;
+{"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"milan":{"titolo":"...","testo":"...","badge":"Crisi Nera"},"juve":{"titolo":"...","testo":"...","badge":"Fenomeno?"},"inter":{"titolo":"...","testo":"...","badge":"Bidone d'Oro"},"seriea_extra":{"titolo":"...","testo":"...","team":"..."},"seriea_extra2":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"...","squadra":"..."},"fanta_top":{"titolo":"...","testo":"...","squadra":"..."},"fanta_commento":"...","fanta_narrativa":{"titolo":"...","paragrafi":["...","...","..."]},"minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}`;
 
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -101,8 +98,17 @@ Rispondi SOLO con JSON valido, zero markdown:
     body: JSON.stringify({
       model: 'deepseek-chat',
       max_tokens: 8192,
-      temperature: 1.3,
-      messages: [{ role: 'user', content: prompt }]
+      temperature: 1.5,
+      top_p: 0.95,
+      presence_penalty: 1.0,
+      frequency_penalty: 1.0,
+      messages: [
+        {
+          role: 'system',
+          content: `Sei un giornalista satirico italiano creativo. Oggi e' ${oggi}, ID sessione: ${ts}. Genera contenuti SEMPRE DIVERSI e originali. Non ripetere mai gli stessi titoli o concetti.`
+        },
+        { role: 'user', content: prompt }
+      ]
     })
   });
 
@@ -114,6 +120,7 @@ Rispondi SOLO con JSON valido, zero markdown:
   const data = await response.json();
   console.log('Finish reason:', data.choices[0].finish_reason);
   console.log('Tokens:', JSON.stringify(data.usage));
+  console.log('Cache hit tokens:', data.usage?.prompt_cache_hit_tokens || 0);
 
   let raw = data.choices[0].message.content.trim();
   raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
@@ -133,8 +140,7 @@ Rispondi SOLO con JSON valido, zero markdown:
     if (c === '"') { inStr = !inStr; continue; }
     if (!inStr) { if (c === '{') open++; if (c === '}') close++; }
   }
-  const missing = open - close;
-  if (missing > 0) { raw += '}'.repeat(missing); console.log('Riparati', missing, 'chiusure }'); }
+  if (open - close > 0) raw += '}'.repeat(open - close);
 
   return JSON.parse(raw);
 }
@@ -146,8 +152,6 @@ async function genera() {
   const oggi = new Date().toLocaleDateString('it-IT', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
-  // Seed basato sulla data per forzare variazione ogni giorno
-  const seed = new Date().toISOString().substring(0, 10);
 
   const [notizie, fanta] = await Promise.all([
     leggiTuttiRSS(),
@@ -163,9 +167,9 @@ async function genera() {
   for (let tentativo = 1; tentativo <= MAX_TENTATIVI; tentativo++) {
     console.log(`\nTentativo ${tentativo}/${MAX_TENTATIVI}...`);
     try {
-      contenuti = await chiamaDeepSeek(oggi, notizie, fantaRiep, seed);
+      contenuti = await chiamaDeepSeek(oggi, notizie, fantaRiep);
 
-      // Incorpora narrativa fanta nei fanta_data
+      // Incorpora narrativa fanta
       if (contenuti.fanta_narrativa && fanta) {
         fanta.narrativa = {
           titolo: contenuti.fanta_narrativa.titolo,
@@ -181,9 +185,7 @@ async function genera() {
       erroreFinale = err;
       console.log(`Tentativo ${tentativo} fallito: ${err.message}`);
       if (tentativo < MAX_TENTATIVI) {
-        const pausa = tentativo * 10000;
-        console.log(`Attendo ${pausa/1000}s...`);
-        await new Promise(r => setTimeout(r, pausa));
+        await new Promise(r => setTimeout(r, tentativo * 10000));
       }
     }
   }
@@ -193,22 +195,19 @@ async function genera() {
     if (fs.existsSync(CONTENUTI_FILE)) {
       contenuti = JSON.parse(fs.readFileSync(CONTENUTI_FILE, 'utf8'));
       contenuti.fallback = true;
-    } else {
-      process.exit(0);
-    }
+    } else { process.exit(0); }
   }
 
   contenuti.generato_il = new Date().toISOString();
   fs.writeFileSync(CONTENUTI_FILE, JSON.stringify(contenuti, null, 2), 'utf8');
 
   if (!contenuti.fallback) {
-    const sondaggio = {
+    fs.writeFileSync(SONDAGGIO_FILE, JSON.stringify({
       domanda: contenuti.sondaggio_domanda,
       opzioni: contenuti.sondaggio_opzioni,
       voti: [0, 0, 0, 0],
       data: new Date().toDateString()
-    };
-    fs.writeFileSync(SONDAGGIO_FILE, JSON.stringify(sondaggio, null, 2), 'utf8');
+    }, null, 2), 'utf8');
   }
 
   console.log('\nContenuti salvati:', new Date().toISOString());
