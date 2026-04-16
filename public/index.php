@@ -260,14 +260,21 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
   <?php endif; ?>
 
   <!-- Serie A -->
-  <div class="section-hd"><h2>Serie A</h2><div class="line"></div><span class="badge">Ultime ore</span></div>
+  <div class="section-hd"><h2>Calcio</h2><div class="line"></div><span class="badge">Ultime ore</span></div>
   <div class="article-grid">
-    <?php foreach (['n1','n2','n3'] as $key):
+    <?php
+    // Supporta sia le chiavi nuove n1/n2/n3 che le vecchie milan/juve/inter
+    $news_keys = !empty($contenuti['n1']) ? ['n1','n2','n3'] : ['milan','juve','inter'];
+    foreach ($news_keys as $key):
       $art = $contenuti[$key] ?? null;
-      if (!$art) continue; ?>
+      if (!$art) continue;
+      $team = safe($art, 'team') ?: (($key=='milan') ? 'AC Milan' : (($key=='juve') ? 'Juventus FC' : (($key=='inter') ? 'Inter Milan' : 'Calcio')));
+    ?>
     <div class="acard">
+      <?php if (!empty($art['badge'])): ?>
       <span class="pill <?= badgeClass($art['badge'] ?? '') ?>"><?= safe($art, 'badge') ?></span>
-      <div class="team"><?= safe($art, 'team') ?></div>
+      <?php endif; ?>
+      <div class="team"><?= $team ?></div>
       <h3><?= safe($art, 'titolo') ?></h3>
       <p><?= safe($art, 'testo') ?></p>
       <div class="meta">Generato oggi</div>
@@ -326,16 +333,22 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
 
 <!-- SERIE A -->
 <div id="tab-seriea" class="tab">
-  <div class="section-hd"><h2>Serie A e Calcio</h2><div class="line"></div><span class="badge">Aggiornamenti</span></div>
+  <div class="section-hd"><h2>Calcio</h2><div class="line"></div><span class="badge">Aggiornamenti</span></div>
   <div class="article-grid">
-    <?php foreach (['n1','n2','n3','n4','n5','n6'] as $key):
+    <?php
+    $seriea_keys = !empty($contenuti['n1'])
+      ? ['n1','n2','n3','n4','n5','n6']
+      : ['milan','juve','inter','seriea_extra','seriea_extra2','seriea_extra3'];
+    foreach ($seriea_keys as $key):
       $art = $contenuti[$key] ?? null;
-      if (!$art) continue; ?>
+      if (!$art) continue;
+      $team = safe($art,'team') ?: (($key=='milan')?'AC Milan':(($key=='juve')?'Juventus FC':(($key=='inter')?'Inter Milan':'Calcio')));
+    ?>
     <div class="acard">
       <?php if (!empty($art['badge'])): ?>
         <span class="pill <?= badgeClass($art['badge']) ?>"><?= safe($art, 'badge') ?></span>
       <?php endif; ?>
-      <div class="team"><?= safe($art, 'team') ?></div>
+      <div class="team"><?= $team ?></div>
       <h3><?= safe($art, 'titolo') ?></h3>
       <p><?= safe($art, 'testo') ?></p>
       <div class="meta">Generato oggi</div>
