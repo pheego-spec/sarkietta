@@ -192,14 +192,15 @@ body{font-family:'DM Sans',sans-serif;background:#fff;font-size:16px}
     <div class="logo-divider"></div>
     <img src="icona.png" alt="" class="logo-icon">
   </div>
-  <nav class="nav-row">
-    <a href="#" class="active" onclick="goTab('home',this);return false">Home</a>
-    <a href="#" onclick="goTab('fanta',this);return false">Sarkiasuperlega</a>
-    <a href="#" onclick="goTab('crotone',this);return false">Crotone FC</a>
-    <a href="#" onclick="goTab('seriea',this);return false">Serie A</a>
-    <a href="#" onclick="goTab('minori',this);return false">Sport Minori</a>
-    <a href="#" onclick="goTab('sondaggio',this);return false">Sondaggio</a>
-    <a href="#" onclick="goTab('giovanni',this);return false">Giovanni spiega</a>
+  <?php $tab_iniziale = isset($_GET['tab']) ? htmlspecialchars($_GET['tab']) : 'home'; ?>
+<nav class="nav-row">
+    <a href="#" class="active" onclick="goTab('home',this)">Home</a>
+    <a href="#fanta" onclick="goTab('fanta',this)" <?php echo $tab_iniziale=="fanta" ? 'class="active"' : ""; ?>>Sarkiasuperlega</a>
+    <a href="#crotone" onclick="goTab('crotone',this)" <?php echo $tab_iniziale=="crotone" ? 'class="active"' : ""; ?>>Crotone FC</a>
+    <a href="#seriea" onclick="goTab('seriea',this)" <?php echo $tab_iniziale=="seriea" ? 'class="active"' : ""; ?>>Serie A</a>
+    <a href="#minori" onclick="goTab('minori',this)" <?php echo $tab_iniziale=="minori" ? 'class="active"' : ""; ?>>Sport Minori</a>
+    <a href="#sondaggio" onclick="goTab('sondaggio',this)" <?php echo $tab_iniziale=="sondaggio" ? 'class="active"' : ""; ?>>Sondaggio</a>
+    <a href="#giovanni" onclick="goTab('giovanni',this)" <?php echo $tab_iniziale=="giovanni" ? 'class="active"' : ""; ?>>Giovanni spiega</a>
   </nav>
 </div>
 
@@ -231,7 +232,7 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
 <div class="main">
 
 <!-- HOME -->
-<div id="tab-home" class="tab active">
+<div id="tab-home" class="tab<?php echo $tab_iniziale=='home' ? ' active' : ''; ?>">
 
   <div class="gen-bar">
     <div class="gen-dot"></div>
@@ -301,7 +302,7 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
 </div><!-- /home -->
 
 <!-- CROTONE -->
-<div id="tab-crotone" class="tab">
+<div id="tab-crotone" class="tab<?php echo $tab_iniziale=="crotone" ? " active" : ""; ?>">
   <div class="section-hd"><h2>Crotone FC</h2><div class="line"></div><span class="badge" style="background:var(--red)">Notizie Epocali</span></div>
   <div class="article-grid">
     <?php if ($contenuti && !empty($contenuti['crotone'])): $c = $contenuti['crotone']; ?>
@@ -332,7 +333,7 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
 </div>
 
 <!-- SERIE A -->
-<div id="tab-seriea" class="tab">
+<div id="tab-seriea" class="tab<?php echo $tab_iniziale=="seriea" ? " active" : ""; ?>">
   <div class="section-hd"><h2>Calcio</h2><div class="line"></div><span class="badge">Aggiornamenti</span></div>
   <div class="article-grid">
     <?php
@@ -358,7 +359,7 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
 </div>
 
 <!-- FANTA -->
-<div id="tab-fanta" class="tab">
+<div id="tab-fanta" class="tab<?php echo $tab_iniziale=="fanta" ? " active" : ""; ?>">
   <div class="section-hd"><h2>Sarkiasuperlega</h2><div class="line"></div></div>
   <?php
   $fanta = null;
@@ -465,7 +466,7 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
 </div>
 
 <!-- SPORT MINORI -->
-<div id="tab-minori" class="tab">
+<div id="tab-minori" class="tab<?php echo $tab_iniziale=="minori" ? " active" : ""; ?>">
   <div class="section-hd"><h2>Sport Minori</h2><div class="line"></div><span class="badge" style="background:#555">Con rispetto</span></div>
   <p style="font-size:14px;color:#888;font-style:italic;margin-bottom:16px">Questi sport esistono e li rispettiamo. Tipo come si rispetta il prezzemolo.</p>
   <div class="minori-grid">
@@ -511,7 +512,7 @@ $ticker_doubled = array_merge($ticker_items, $ticker_items);
 </div>
 
 <!-- GIOVANNI -->
-<div id="tab-giovanni" class="tab">
+<div id="tab-giovanni" class="tab<?php echo $tab_iniziale=="giovanni" ? " active" : ""; ?>">
   <?php
   $gio_file = __DIR__ . '/giovanni_articoli.json';
   $gio_articoli = [];
