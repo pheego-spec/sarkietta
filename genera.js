@@ -132,7 +132,7 @@ ISTRUZIONI TASSATIVE:
 - Per il Crotone: meta reale meta inventato, tema suggerito: "${temaCrotone}"
 - Per fanta_flop e fanta_top: usa i dati reali della classifica
 - Nessun apostrofo nei valori JSON
-- Max 15 parole per campo`;
+- Max 15 parole per campo
 
 Rispondi SOLO con JSON:
 {"n1":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n2":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n3":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n4":{"titolo":"...","testo":"...","team":"..."},"n5":{"titolo":"...","testo":"...","team":"..."},"n6":{"titolo":"...","testo":"...","team":"..."},"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"crotone2":{"titolo":"...","testo":"...","team":"..."},"crotone3":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"...","squadra":"..."},"fanta_top":{"titolo":"...","testo":"...","squadra":"..."},"fanta_commento":"...","minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}`;
@@ -221,6 +221,7 @@ Zero apostrofi nei valori.`;
         if (prev.fanta_narrativa) contenuti.fanta_narrativa = prev.fanta_narrativa;
       }
     }
+    } // fine if narrativaCambiata
     contenuti.fanta_data = fanta;
   }
 
