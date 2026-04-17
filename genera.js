@@ -118,18 +118,21 @@ async function genera() {
   const prompt = `[${ts}] Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano.
 Oggi: ${oggi}
 
-NOTIZIE REALI DI OGGI (prendi quelle che preferisci e rielaborale in chiave ironica):
+NOTIZIE REALI DI OGGI:
 ${notizieTesto}
 
 FANTACALCIO SARKIASUPERLEGA:
 ${fantaRiep}
 
-ISTRUZIONI:
-- Scegli liberamente le notizie reali sopra e rielaborale in modo ironico e sarcastico
+ISTRUZIONI TASSATIVE:
+- Prendi le notizie reali sopra e rielaborale SOLO in chiave ironica
+- Il campo "team" deve essere copiato ESATTAMENTE dalla notizia originale (es. se la notizia parla di Roma scrivi Roma, se parla di Champions scrivi Champions)
+- NON dedurre team o contesto dalla tua conoscenza — usa SOLO quello che sta scritto nelle notizie
+- NON inventare fatti — solo il tono deve essere ironico, i fatti restano reali
 - Per il Crotone: meta reale meta inventato, tema suggerito: "${temaCrotone}"
 - Per fanta_flop e fanta_top: usa i dati reali della classifica
-- Nessun apostrofo nei valori JSON (scrivi "dell Inter" non "dell'Inter")
-- Max 15 parole per campo
+- Nessun apostrofo nei valori JSON
+- Max 15 parole per campo`;
 
 Rispondi SOLO con JSON:
 {"n1":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n2":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n3":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n4":{"titolo":"...","testo":"...","team":"..."},"n5":{"titolo":"...","testo":"...","team":"..."},"n6":{"titolo":"...","testo":"...","team":"..."},"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"crotone2":{"titolo":"...","testo":"...","team":"..."},"crotone3":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"...","squadra":"..."},"fanta_top":{"titolo":"...","testo":"...","squadra":"..."},"fanta_commento":"...","minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}`;
@@ -185,9 +188,23 @@ Rispondi SOLO con JSON:
     vincenti: flat.vincenti
   };
 
-  // Narrativa fanta
+  // Narrativa fanta — solo se i dati sono cambiati
   if (fanta) {
-    console.log('\nGenerazione narrativa fanta...');
+    // Controlla se i dati fanta sono cambiati rispetto all'ultimo run
+    let narrativaCambiata = true;
+    if (fs.existsSync(CONTENUTI_FILE)) {
+      const prev = JSON.parse(fs.readFileSync(CONTENUTI_FILE, 'utf8'));
+      const prevData = prev.fanta_data;
+      if (prevData && prevData.aggiornato_il && fanta.aggiornato_il &&
+          prevData.aggiornato_il === fanta.aggiornato_il &&
+          prev.fanta_narrativa) {
+        narrativaCambiata = false;
+        contenuti.fanta_narrativa = prev.fanta_narrativa;
+        console.log('Narrativa fanta invariata — riuso precedente (dati Excel non cambiati)');
+      }
+    }
+    if (narrativaCambiata) {
+    console.log('\nGenerazione narrativa fanta (dati cambiati)...');
     try {
       const nts = Date.now();
       const np = `Analista sarcastico fantacalcio. Dati: ${fantaRiep}. ID:${nts}.
