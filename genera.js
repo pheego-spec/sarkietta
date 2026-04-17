@@ -164,12 +164,12 @@ Rispondi SOLO con JSON:
   const contenuti = {
     generato_il: new Date().toISOString(),
     // Notizie Serie A libere (non vincolate a squadra specifica)
-    milan:  { titolo: flat.n1.titolo, testo: flat.n1.testo, badge: flat.n1.badge || 'Serie A' },
-    juve:   { titolo: flat.n2.titolo, testo: flat.n2.testo, badge: flat.n2.badge || 'Serie A' },
-    inter:  { titolo: flat.n3.titolo, testo: flat.n3.testo, badge: flat.n3.badge || 'Serie A' },
-    seriea_extra:  { titolo: flat.n4.titolo, testo: flat.n4.testo, team: flat.n4.team || 'Serie A' },
-    seriea_extra2: { titolo: flat.n5.titolo, testo: flat.n5.testo, team: flat.n5.team || 'Serie A' },
-    seriea_extra3: { titolo: flat.n6.titolo, testo: flat.n6.testo, team: flat.n6.team || 'Serie A' },
+    n1: { titolo: flat.n1.titolo, testo: flat.n1.testo, team: flat.n1.team || 'Calcio', badge: flat.n1.badge || '' },
+    n2: { titolo: flat.n2.titolo, testo: flat.n2.testo, team: flat.n2.team || 'Calcio', badge: flat.n2.badge || '' },
+    n3: { titolo: flat.n3.titolo, testo: flat.n3.testo, team: flat.n3.team || 'Calcio', badge: flat.n3.badge || '' },
+    n4: { titolo: flat.n4.titolo, testo: flat.n4.testo, team: flat.n4.team || 'Calcio' },
+    n5: { titolo: flat.n5.titolo, testo: flat.n5.testo, team: flat.n5.team || 'Calcio' },
+    n6: { titolo: flat.n6.titolo, testo: flat.n6.testo, team: flat.n6.team || 'Calcio' },
     crotone:  { titolo: flat.crotone.titolo, sottotitolo: flat.crotone.sottotitolo, testo: flat.crotone.testo },
     crotone2: { titolo: flat.crotone2.titolo, testo: flat.crotone2.testo, team: flat.crotone2.team || 'Crotone' },
     crotone3: { titolo: flat.crotone3.titolo, testo: flat.crotone3.testo, team: flat.crotone3.team || 'Crotone' },
