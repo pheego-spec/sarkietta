@@ -144,15 +144,27 @@ ${minoriTesto}
 FANTACALCIO SARKIASUPERLEGA:
 ${fantaRiep}
 
+STILE OBBLIGATORIO PER TUTTI I TESTI:
+- Tono da opinionista esperto ma emotivo, mai neutrale
+- Giudizi netti e posizioni forti, niente vie di mezzo
+- Alterna analisi tecnica reale a commenti sarcastici
+- Usa ironia, iperboli, esagerazioni
+- Inserisci domande retoriche ("ma davvero...?", "dai su...")
+- Linguaggio semplice e diretto, occasionali espressioni colorite
+- Amplifica sempre il significato degli eventi
+- Sfottò e critiche ironiche verso giocatori, arbitri, squadre
+- Struttura: apertura con giudizio forte → analisi + sarcasmo → sentenza finale
+- VIETATO: tono giornalistico neutro, descrizioni piatte, cronaca senza opinione
+
 ISTRUZIONI TASSATIVE:
-- Prendi le notizie reali sopra e rielaborale SOLO in chiave ironica
-- Il campo "team" deve essere copiato ESATTAMENTE dalla notizia originale (es. se la notizia parla di Roma scrivi Roma, se parla di Champions scrivi Champions)
-- NON dedurre team o contesto dalla tua conoscenza — usa SOLO quello che sta scritto nelle notizie
-- NON inventare fatti — solo il tono deve essere ironico, i fatti restano reali
+- Prendi le notizie reali e rielaborale con lo stile sopra
+- Il campo "team" deve essere copiato ESATTAMENTE dalla notizia originale
+- NON dedurre team o contesto dalla tua conoscenza — usa SOLO quello che sta scritto
+- NON inventare fatti — solo il tono deve essere ironico e opinioso, i fatti restano reali
 - Per il Crotone: meta reale meta inventato, tema suggerito: "${temaCrotone}"
 - Per fanta_flop e fanta_top: usa i dati reali della classifica
 - Nessun apostrofo nei valori JSON
-- Max 15 parole per campo
+- Max 20 parole per campo (il tono richiede un po' più di spazio)
 
 Rispondi SOLO con JSON:
 {"n1":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n2":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n3":{"titolo":"...","testo":"...","team":"...","badge":"..."},"n4":{"titolo":"...","testo":"...","team":"..."},"n5":{"titolo":"...","testo":"...","team":"..."},"n6":{"titolo":"...","testo":"...","team":"..."},"crotone":{"titolo":"...","sottotitolo":"...","testo":"..."},"crotone2":{"titolo":"...","testo":"...","team":"..."},"crotone3":{"titolo":"...","testo":"...","team":"..."},"fanta_flop":{"titolo":"...","testo":"...","squadra":"..."},"fanta_top":{"titolo":"...","testo":"...","squadra":"..."},"fanta_commento":"...","minori_tennis":{"titolo":"...","testo":"..."},"minori_f1":{"titolo":"...","testo":"..."},"minori_altro":{"categoria":"...","titolo":"...","testo":"..."},"ticker":["...","...","...","...","..."],"sondaggio_domanda":"...","sondaggio_opzioni":["...","...","...","..."],"vincenti":[{"nome":"...","testo":"..."},{"nome":"...","testo":"..."}]}`;
