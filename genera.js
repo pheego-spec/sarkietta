@@ -31,11 +31,12 @@ async function cercaNotizie() {
     if (!res.ok) return { calcio: [], f1: [], moto: [], tennis: [], tutti: [] };
     const data = await res.json();
     const risultato = {
-      calcio: data.calcio || [],
-      f1:     data.f1     || [],
-      moto:   data.moto   || [],
-      tennis: data.tennis || [],
-      tutti:  data.titoli || []
+      calcio:  data.calcio  || [],
+      f1:      data.f1      || [],
+      moto:    data.moto    || [],
+      tennis:  data.tennis  || [],
+      crotone: data.crotone || [],
+      tutti:   data.titoli  || []
     };
     console.log(`Notizie: calcio=${risultato.calcio.length}, f1=${risultato.f1.length}, moto=${risultato.moto.length}, tennis=${risultato.tennis.length}`);
     risultato.calcio.slice(0,4).forEach((t,i) => console.log(`  calcio ${i+1}. ${t.substring(0,80)}`));
@@ -113,7 +114,7 @@ async function genera() {
     cercaNotizie(),
     Promise.resolve(leggiFantacalcio())
   ]);
-  const { calcio: notizieCalcio, f1: notizieF1, moto: notizieMoto, tennis: notizieTennis } = notizie;
+  const { calcio: notizieCalcio, f1: notizieF1, moto: notizieMoto, tennis: notizieTennis, crotone: notizieCrotone } = notizie;
 
   const fantaRiep = fantaRiepilogo(fanta);
 
@@ -133,6 +134,9 @@ Oggi: ${oggi}
 
 NOTIZIE CALCIO REALI DI OGGI (usa per n1-n6):
 ${calcioTesto}
+
+NOTIZIE CROTONE REALI da ilrossoblu.it (usale come base per crotone/crotone2/crotone3, rielabora in chiave ironica):
+${notizieCrotone.length > 0 ? notizieCrotone.map((t,i) => (i+1)+'. '+t).join('\n') : 'Nessuna notizia Crotone — inventa liberamente sul tema: '+temaCrotone}
 
 NOTIZIE SPORT MINORI REALI (usa ESATTAMENTE per minori_tennis, minori_f1, minori_altro):
 ${minoriTesto}
