@@ -28,15 +28,21 @@ async function cercaNotizie() {
     const res = await fetch('https://sarkietta.it/rss_proxy.php', {
       signal: AbortSignal.timeout(10000)
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { calcio: [], f1: [], moto: [], tennis: [], tutti: [] };
     const data = await res.json();
-    const titoli = data.titoli || [];
-    console.log(`Notizie reali trovate: ${titoli.length}`);
-    titoli.slice(0, 6).forEach((t,i) => console.log(`  ${i+1}. ${t.substring(0,80)}`));
-    return titoli;
+    const risultato = {
+      calcio: data.calcio || [],
+      f1:     data.f1     || [],
+      moto:   data.moto   || [],
+      tennis: data.tennis || [],
+      tutti:  data.titoli || []
+    };
+    console.log(`Notizie: calcio=${risultato.calcio.length}, f1=${risultato.f1.length}, moto=${risultato.moto.length}, tennis=${risultato.tennis.length}`);
+    risultato.calcio.slice(0,4).forEach((t,i) => console.log(`  calcio ${i+1}. ${t.substring(0,80)}`));
+    return risultato;
   } catch(e) {
     console.log('Proxy RSS fallito:', e.message);
-    return [];
+    return { calcio: [], f1: [], moto: [], tennis: [], tutti: [] };
   }
 }
 
@@ -107,19 +113,29 @@ async function genera() {
     cercaNotizie(),
     Promise.resolve(leggiFantacalcio())
   ]);
+  const { calcio: notizieCalcio, f1: notizieF1, moto: notizieMoto, tennis: notizieTennis } = notizie;
 
   const fantaRiep = fantaRiepilogo(fanta);
 
-  const notizieTesto = notizie.length > 0
-    ? notizie.map((t,i) => `${i+1}. ${t}`).join('\n')
-    : 'Nessuna notizia disponibile oggi.';
+  const calcioTesto = notizieCalcio.length > 0
+    ? notizieCalcio.map((t,i) => `${i+1}. ${t}`).join('\n')
+    : 'Nessuna notizia calcio disponibile.';
+  const minoriTesto = [
+    ...notizieF1.map(t => 'F1: ' + t),
+    ...notizieMoto.map(t => 'MotoGP: ' + t),
+    ...notizieTennis.map(t => 'Tennis: ' + t)
+  ].join('\n') || 'Nessuna notizia sport minori.';
+  const notizieTesto = calcioTesto; // per compatibilità
 
   // PROMPT SEMPLICE: notizie reali + rielaborazione ironica
   const prompt = `[${ts}] Sei la redazione de "La Sarkietta dello Sport", giornale satirico italiano.
 Oggi: ${oggi}
 
-NOTIZIE REALI DI OGGI:
-${notizieTesto}
+NOTIZIE CALCIO REALI DI OGGI (usa per n1-n6):
+${calcioTesto}
+
+NOTIZIE SPORT MINORI REALI (usa ESATTAMENTE per minori_tennis, minori_f1, minori_altro):
+${minoriTesto}
 
 FANTACALCIO SARKIASUPERLEGA:
 ${fantaRiep}
