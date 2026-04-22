@@ -54,8 +54,9 @@ function pulisciRaw(raw) {
   if (start === -1 || end === -1) throw new Error('Nessun JSON trovato');
   raw = raw.substring(start, end + 1);
   raw = raw.replace(/[\r\n\t]/g, ' ').replace(/ {2,}/g, ' ').trim();
-  raw = raw.replace(/([a-zA-Z])'([a-zA-ZÀ-ù])/g, '$1$2');
-  raw = raw.replace(/[\u2018\u2019\u201C\u201D]/g, '');
+  // Sostituisce virgolette tipografiche con standard
+  raw = raw.replace(/[\u2018\u2019]/g, "\'");
+  raw = raw.replace(/[\u201C\u201D]/g, '\"');
   let open = 0, close = 0, inStr = false, escape = false;
   for (const c of raw) {
     if (escape) { escape = false; continue; }
@@ -164,7 +165,8 @@ ISTRUZIONI TASSATIVE:
 - NON inventare fatti — solo il tono deve essere ironico e opinioso, i fatti restano reali
 - Per il Crotone: meta reale meta inventato, tema suggerito: "${temaCrotone}"
 - Per fanta_flop e fanta_top: usa i dati reali della classifica
-- Nessun apostrofo nei valori JSON
+- Puoi usare apostrofi normali nei testi (dell'Inter, non è, ecc.) — sono validi dentro stringhe JSON
+- Usa SOLO virgolette doppie per delimitare i valori JSON, mai virgolette singole
 - Max 20 parole per campo (il tono richiede un po' più di spazio)
 
 Rispondi SOLO con JSON:
