@@ -70,6 +70,7 @@ function pulisciRaw(raw) {
 async function callDeepSeek(prompt, system) {
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
+    signal: AbortSignal.timeout(60000),
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
