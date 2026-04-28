@@ -48,21 +48,21 @@ def leggi_calendario(path, giornata_num):
     targets = [f"{giornata_num}ª Giornata lega", f"{giornata_num}a Giornata lega", f"{giornata_num}° Giornata lega"]
 
     for i, row in enumerate(rows):
-        found = False
-        for cell in row:
+        col_offset = None
+        for col_idx, cell in enumerate(row):
             if cell and any(str(cell).startswith(t) for t in targets):
-                found = True
+                col_offset = col_idx  # 0 = colonna sinistra, 6 = colonna destra
                 break
-        if found:
+        if col_offset is not None:
             for j in range(1, 5):
                 if i + j >= len(rows): break
                 r = rows[i + j]
                 try:
-                    casa  = str(r[0]).strip() if r[0] else None
-                    pt_c  = float(r[1]) if r[1] is not None else 0
-                    pt_f  = float(r[2]) if r[2] is not None else 0
-                    fuori = str(r[3]).strip() if r[3] else None
-                    ris   = str(r[4]).strip() if r[4] is not None else '-'
+                    casa  = str(r[col_offset]).strip() if r[col_offset] else None
+                    pt_c  = float(r[col_offset+1]) if r[col_offset+1] is not None else 0
+                    pt_f  = float(r[col_offset+2]) if r[col_offset+2] is not None else 0
+                    fuori = str(r[col_offset+3]).strip() if r[col_offset+3] else None
+                    ris   = str(r[col_offset+4]).strip() if r[col_offset+4] is not None else '-'
                     if not casa or not fuori or ris in ('-', 'None', ''): continue
                     gol = ris.split('-')
                     if len(gol) != 2: continue
