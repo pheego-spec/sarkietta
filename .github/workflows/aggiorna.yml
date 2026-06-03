@@ -1,60 +1,60 @@
-name: Aggiorna Sarkietta ogni mattina
+#name: Aggiorna Sarkietta ogni mattina
 
-on:
-  workflow_dispatch:
+#on:
+#  workflow_dispatch:
 
-jobs:
-  genera-e-carica:
-    runs-on: ubuntu-latest
-    steps:
+#jobs:
+#  genera-e-carica:
+#    runs-on: ubuntu-latest
+#    steps:
 
-      - name: Checkout repo
-        uses: actions/checkout@v4
+#      - name: Checkout repo
+#        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+#      - name: Setup Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: '20'
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+#      - name: Setup Python
+#        uses: actions/setup-python@v5
+#        with:
+#          python-version: '3.11'
 
-      - name: Installa openpyxl
-        run: pip install openpyxl
+#     - name: Installa openpyxl
+#        run: pip install openpyxl
 
-      - name: Leggi Excel e genera fantacalcio.json
-        run: |
-          CLASSIFICA=$(ls fanta/Classifica_*.xlsx 2>/dev/null | head -1)
-          CALENDARIO=$(ls fanta/Calendario_*.xlsx 2>/dev/null | head -1)
-          if [ -n "$CLASSIFICA" ] && [ -n "$CALENDARIO" ]; then
-            echo "Trovati: $CLASSIFICA e $CALENDARIO"
-            python3 leggi_excel.py "$CLASSIFICA" "$CALENDARIO" public/fantacalcio.json
-          else
-            echo "File Excel non trovati in fanta/ — uso fantacalcio.json esistente"
-          fi
+#      - name: Leggi Excel e genera fantacalcio.json
+ #       run: |
+   #       CALENDARIO=$(ls fanta/Calendario_*.xlsx 2>/dev/null | head -1)
+  #        CLASSIFICA=$(ls fanta/Classifica_*.xlsx 2>/dev/null | head -1)
+    #      if [ -n "$CLASSIFICA" ] && [ -n "$CALENDARIO" ]; then
+     #       echo "Trovati: $CLASSIFICA e $CALENDARIO"
+      #      python3 leggi_excel.py "$CLASSIFICA" "$CALENDARIO" public/fantacalcio.json
+       #   else
+        #    echo "File Excel non trovati in fanta/ — uso fantacalcio.json esistente"
+         # fi
 
-      - name: Genera contenuti AI
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
-        run: node genera.js
-
-      - name: Installa lftp e carica su FTP
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
-        run: |
-          sudo apt-get install -y lftp
-          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_HOST" << EOF
-          set ftp:passive-mode true
-          set ftp:use-ipv6 false
-          set ssl:verify-certificate false
-          set net:timeout 30
-          mirror -R ./public/ $FTP_REMOTE_DIR
-          bye
-          EOF
+#      - name: Genera contenuti AI
+ #       env:
+  #        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+   #       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+    #      NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+     #   run: node genera.js
+#
+ #     - name: Installa lftp e carica su FTP
+  #      env:
+   #       FTP_HOST: ${{ secrets.FTP_HOST }}
+    #      FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+     #     FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      #    FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
+       # run: |
+  #        sudo apt-get install -y lftp
+  #        lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_HOST" << EOF
+   #       set ftp:passive-mode true
+    #      set ftp:use-ipv6 false
+     #     set ssl:verify-certificate false
+      #    set net:timeout 30
+       #   mirror -R ./public/ $FTP_REMOTE_DIR
+        #  bye
+         # EOF
